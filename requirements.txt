@@ -2,8 +2,4 @@ mediafile==0.13.0
 sqlalchemy==2.0.43
 pyacoustid==1.3.0
 psycopg2-binary==2.9.10
-audioread==3.0.1
-numpy==2.3.3
-scipy==1.16.2
-librosa==0.11.0
 audioprint @ git+https://github.com/JuniorJPDJ/audioprint@pyproject
