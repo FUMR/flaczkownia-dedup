@@ -13,6 +13,7 @@ Base = sa.orm.declarative_base()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
 
+
 class Track(Base):
     __tablename__ = "tracks"
 
@@ -70,7 +71,8 @@ def process_path(path, session):
             return
     else:
         logger.info(f"Processing directory: {path}")
-        msg_id, files = path.rsplit("/", 1)[-1].split(" ")[0], (f'{path}/{f}' for f in os.listdir(path) if f.lower().endswith(".flac"))
+        msg_id, files = path.rsplit("/", 1)[-1].split(" ")[0], (f'{path}/{f}' for f in os.listdir(path) if
+                                                                f.lower().endswith(".flac"))
 
     for file in files:
         # Skip already indexed
@@ -110,8 +112,9 @@ def process_path(path, session):
 
 def main():
     parser = argparse.ArgumentParser(description="FLAC duplicate checker (ORM + pyacoustid)")
-    parser.add_argument("-d","--directory", help="Path to FLAC directory")
-    parser.add_argument("--db", "--database", default="sqlite://deduplicate.sqlite", help="Database URL (either SQLite3 or PG DSN")
+    parser.add_argument("-d", "--directory", help="Path to FLAC directory")
+    parser.add_argument("--db", "--database", default="sqlite://deduplicate.sqlite",
+                        help="Database URL (either SQLite3 or PG DSN")
     args = parser.parse_args()
 
     session = init_db(args.db)
