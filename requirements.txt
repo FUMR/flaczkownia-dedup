@@ -6,3 +6,4 @@ audioread==3.0.1
 numpy==2.3.3
 scipy==1.16.2
 librosa==0.11.0
+audioprint @ git+https://github.com/JuniorJPDJ/audioprint@pyproject
