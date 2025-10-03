@@ -1,12 +1,12 @@
-import os
 import argparse
-import acoustid
-import logger
-import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from mediafile import MediaFile
+import logging
+import os
+from typing import Tuple
 
+import acoustid
+import sqlalchemy as sa
+from mediafile import MediaFile
+from sqlalchemy.orm import sessionmaker
 
 Base = sa.orm.declarative_base()
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='DEBUG')
@@ -16,6 +16,7 @@ class Track(Base):
     __tablename__ = "tracks"
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    message_id = sa.Column(sa.Integer, nullable=False)
     path = sa.Column(sa.String, unique=True, nullable=False)
     track_number = sa.Column(sa.Integer, nullable=True)
     disc_number = sa.Column(sa.Integer, nullable=True)
@@ -24,7 +25,7 @@ class Track(Base):
     duplicate = sa.Column(sa.Boolean, default=False)
 
 
-def get_metadata(path) -> (str, int, int):
+def get_metadata(path) -> Tuple[str, int, int]:
     mf = MediaFile(path)
     album = mf.album or ""
     track_number = mf.track or 0
@@ -32,48 +33,59 @@ def get_metadata(path) -> (str, int, int):
     return album, track_number, disc_number
 
 
-def get_acoustid(path) -> str:
+def get_acoustid(path) -> str | None:
     """Use pyacoustid to calculate Chromaprint fingerprint locally (no API)."""
     try:
         _, fp = acoustid.fingerprint_file(path)
-        return fp  # raw fingerprint string
+        return fp.decode()  # raw fingerprint string
     except Exception as e:
         logger.error(f"Error fingerprinting {path}: {e}")
         return None
 
 
 def init_db(db_url):
+    logger.debug(f"Initializing database")
     engine = sa.create_engine(db_url, echo=False)
     Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
+    session = sessionmaker(bind=engine)
+    logger.debug(f"Database initialized")
+    return session()
 
 
-def process_directory(directory, session):
+def process_path(path, session):
     # Collect and sort by creation date
-    files = []
-    for root, _, flist in os.walk(directory):
-        for fname in flist:
-            if fname.lower().endswith(".flac"):
-                path = os.path.join(root, fname)
-                try:
-                    ctime = os.path.getctime(path)
-                except Exception:
-                    ctime = 0
-                files.append((ctime, path))
-    files.sort(key=lambda x: x[0])  # sort oldest → newest
+    if not os.path.exists(path):
+        logger.debug(f"Skipping non-existent path: {path}")
+        return
 
-    for _, path in files:
+    logger.debug(f"Processing path: {path}")
+    if path.endswith("/"):
+        path = path[:-1]
+
+    if os.path.isfile(path):
+        if path.lower().endswith(".flac"):
+            logger.debug(f"Processing file: {path}")
+            msg_id, files = path.split(" ", 1)[0], [path]
+        else:
+            logger.debug(f"Skipping file: {path}")
+            return
+    else:
+        logger.debug(f"Processing directory: {path}")
+        msg_id, files = path.rsplit("/", 1)[-1].split(" ")[0], (f'{path}/{f}' for f in os.listdir(path) if f.lower().endswith(".flac"))
+
+    for file in files:
         # Skip already indexed
-        if session.query(Track).filter_by(path=path).first():
+        if session.query(Track).filter_by(path=file).first():
+            logger.debug(f"Skipping already indexed file: {file}")
             continue
 
-        album, track_number, disc_number = get_metadata(path)
-        fp = get_acoustid(path)
+        album, track_number, disc_number = get_metadata(file)
+        fp = get_acoustid(file)
         if fp is None:
+            logger.debug(f"Skipping file without fingerprint: {file}")
             continue
 
-        # Check if same track already exists
+        # Check if the same track already exists
         existing = session.query(Track).filter_by(
             album=album,
             track_number=track_number,
@@ -82,7 +94,8 @@ def process_directory(directory, session):
         ).first()
 
         track = Track(
-            path=path,
+            message_id=msg_id,
+            path=file,
             album=album,
             track_number=track_number,
             disc_number=disc_number,
@@ -93,7 +106,7 @@ def process_directory(directory, session):
         session.add(track)
         session.commit()
 
-        logger.info(f"{'DUPLICATE' if duplicate else 'NEW'}: {path}")
+        logger.debug(f"Processed file: {file}")
 
 
 def main():
@@ -102,8 +115,8 @@ def main():
     parser.add_argument("--db", "--database", default="sqlite://deduplicate.sqlite", help="Database URL (either SQLite3 or PG DSN")
     args = parser.parse_args()
 
-    session = init_db(args.database)
-    process_directory(args.directory, session)
+    session = init_db(args.db)
+    process_path(args.directory, session)
 
 
 if __name__ == "__main__":
