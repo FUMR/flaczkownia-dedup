@@ -58,7 +58,7 @@ COPY        --chown=nobody:nogroup . .
 
 USER        nobody
 
-ENV         PYTHONUNBUFFERED="1"
-ENV         NUMBA_CACHE_DIR="/tmp/numba"
+ENV         PYTHONUNBUFFERED=1
+ENV         NUMBA_CACHE_DIR=/tmp/numba
 
 ENTRYPOINT  [ "python", "dedup.py" ]
