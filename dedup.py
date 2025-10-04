@@ -18,7 +18,7 @@ class Track(Base):
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     path = sa.Column(sa.String, unique=True, nullable=False)
-    acoustic_fingerprint = sa.Column(sa.Integer, nullable=False)
+    acoustic_fingerprint = sa.Column(sa.BigInteger, nullable=False)
     album = sa.Column(sa.String, nullable=False)
     disc_number = sa.Column(sa.Integer, nullable=False)
     track_number = sa.Column(sa.Integer, nullable=False)
