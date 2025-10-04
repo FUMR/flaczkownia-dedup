@@ -1,18 +1,24 @@
+#!/bin/env python3
+
 import argparse
 import logging
 import os
+from time import sleep
 
 import audioprint
+import mediafile
 import sqlalchemy as sa
+import sqlalchemy.orm
 from mediafile import MediaFile
-from sqlalchemy.orm import sessionmaker
 
-Base = sa.orm.declarative_base()
+from lib.jobqueue import Queue, Status
+from lib.sqlbase import SQLBase
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
 
 
-class Track(Base):
+class Track(SQLBase):
     __tablename__ = "tracks"
 
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
@@ -52,7 +58,12 @@ def process_path(path, session):
             logger.info(f"Skipping already indexed file: {file}")
             continue
 
-        mf = MediaFile(file)
+        try:
+            mf = MediaFile(file)
+        except mediafile.FileTypeError:
+            logger.info(f"Skipping file in unsupported format: {file}")
+            continue
+
         fp = audioprint.fingerprint_file(file)
 
         # Check if the same track already exists
@@ -75,23 +86,49 @@ def process_path(path, session):
         session.add(track)
         session.commit()
 
-        logger.info(f"Processed file: {file}")
+        logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Flaczkownia dedup")
-    parser.add_argument("-d", "--directory", help="Path to flaczkownia directory")
-    parser.add_argument("--db", "--database", default="sqlite:///data/dedup.sqlite3",
+    parser = argparse.ArgumentParser(description="Flaczkownia dedup daemon")
+    parser.add_argument("--directory", help="Path to flaczkownia directory. Starts in queue mode if not provided.")
+    parser.add_argument("--db", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
     args = parser.parse_args()
 
     logger.info(f"Initializing database")
     engine = sa.create_engine(args.db, echo=False)
-    Base.metadata.create_all(engine)
-    session = sessionmaker(bind=engine)()
+    SQLBase.metadata.create_all(engine)
+    session = sa.orm.sessionmaker(bind=engine)()
     logger.info(f"Database initialized")
 
-    process_path(args.directory, session)
+    if args.directory:
+        process_path(args.directory, session)
+        return
+
+    running = True
+    while running:
+        try:
+            job: Queue | None = session.query(Queue).filter_by(status=Status.PENDING).order_by(Queue.created_at).first()
+
+            if job is None:
+                sleep(1)
+                continue
+
+            logger.info(f"Starting processing of job with queue_id: {job.id}")
+            job.update_status(Status.PROCESSING, session)
+
+            try:
+                process_path(job.path, session)
+            except Exception as e:
+                job.update_status(Status.FAILED, session)
+                logger.info(f"Job failed")
+                raise e
+
+            job.update_status(Status.DONE, session)
+            logger.info(f"Job done")
+        except KeyboardInterrupt:
+            running = False
 
 
 if __name__ == "__main__":
