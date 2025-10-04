@@ -19,12 +19,15 @@ class Track(Base):
     id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
     path = sa.Column(sa.String, unique=True, nullable=False)
     acoustic_fingerprint = sa.Column(sa.BigInteger, nullable=False)
-    album = sa.Column(sa.String, nullable=False)
-    disc_number = sa.Column(sa.Integer, nullable=False)
-    track_number = sa.Column(sa.Integer, nullable=False)
-    duplicate = sa.Column(sa.Boolean, default=False)
+    album = sa.Column(sa.String)
+    disc_number = sa.Column(sa.Integer)
+    track_number = sa.Column(sa.Integer)
+    duplicate = sa.Column(sa.Boolean, nullable=False, default=False)
 
-    # TODO: uniq tuple
+    __table_args__ = (
+        sa.Index("idx_duplicate", "acoustic_fingerprint", "album", "disc_number", "track_number",
+                 unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
+    )
 
 
 def get_audioprint(path) -> int | None:
@@ -65,8 +68,8 @@ def process_path(path, session):
     else:
         logger.info(f"Processing directory: {path}")
         # TODO: NO FUCKING WAY
-        msg_id, files = path.rsplit("/", 1)[-1].split(" ")[0], (f'{path}/{f}' for f in os.listdir(path) if
-                                                                f.lower().endswith(".flac"))
+        msg_id, files = path.rsplit("/", 1)[-1].split(" ")[0], (f'{path}/{f}' for f in
+                                                                os.listdir(path) if f.lower().endswith(".flac"))
 
     for file in files:
         # Skip already indexed
@@ -74,7 +77,7 @@ def process_path(path, session):
             logger.info(f"Skipping already indexed file: {file}")
             continue
 
-        mf = MediaFile(path)
+        mf = MediaFile(file)
         fp = get_audioprint(file)
 
         # Check if the same track already exists

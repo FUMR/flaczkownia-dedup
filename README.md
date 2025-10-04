@@ -33,7 +33,7 @@ We somehow need to understand which files are similar enough (acoustic-wise). Ac
 However, this alone doesn’t solve everything - we also need to distinguish between singles and album releases to avoid breaking the album's completeness.
 
 We decided to use a unique tuple consisting of:
-> (Album Name, Album Track Number, Acoustic Hash)
+> (Album Name, Album Disc Number, Album Track Number, Acoustic Hash)
 
 This ensures that:
 - Deduplication happens **within the same album only**
