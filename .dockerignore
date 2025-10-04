@@ -1,5 +1,9 @@
 .github/
-.venv/
 .git/
-README.md
+.idea/
+.venv/
+data/
+dedup.sqlite3
 .gitignore
+docker-compose.yaml
+README.md
