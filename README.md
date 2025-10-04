@@ -24,7 +24,7 @@ After time-consuming analysis of the problem, @JuniorJPDJ and @loobson came up w
 - Backfill:
   - Can be handled by a separate script - no need to include it in the main daemon
   - Should prefer newer files (since they aren’t imported yet)
-  - Live dedup should prefer older files (since those are already imported and possibly have metadata)
+- Live dedup should prefer older files (since those are already imported and possibly have metadata)
 
 
 ## 💡 The solution
@@ -51,10 +51,7 @@ We explored other options - including LastFM’s fingerprinting library, which t
 Finally, we found audioprint, which:
 - aligns perfectly with our use case
 - produces consistent hashes across different audio sources
-- has minimal risk of collisions (acceptable for our tuple-based comparison)
+- has big risk of collisions (acceptable for our tuple-based comparison)
 
-Although **audioprint** isn’t available on PyPI and lacks packaging files (`setup.py`, `pyproject.toml`), we:
-- forked the repository
-- added the necessary packaging support
-- use our fork in requirements.txt
-- looking forward to contributing our changes to upstream in the future
+Although **audioprint** isn’t available on PyPI and lacks packaging files (`setup.py`, `pyproject.toml`), we forked the repository and added the necessary packaging support.
+Now we are looking forward for maintainer to merge our changes to upstream so we can stop using the fork in dependencies.
