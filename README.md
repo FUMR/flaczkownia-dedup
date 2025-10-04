@@ -10,7 +10,7 @@ We needed a way to **avoid importing the same track multiple times**, even if it
 
 ## 🔍 Problem Analysis
 
-After time-consuming analysis of the problem, @JuniorJPDJ and @lobsonwf came up with basic assumptions:
+After time-consuming analysis of the problem, @JuniorJPDJ and @loobson came up with basic assumptions:
 - **No duplicated tracks on the same album** - regardless of source.
 - **Tidal and Deezer** tracks can create separate albums if metadata differs (not ideal, but acceptable).
 - A track first released as a single and later included in an album should not be deduplicated — those are distinct releases.
