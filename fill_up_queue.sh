@@ -19,12 +19,12 @@ for id in "${!lookup[@]}"; do
 done | sort -nr | while read -r id; do
     json='{
       "msg_id": '"$id"',
-      "chat_id": 0,
-      "sender_id": 0,
+      "chat_id": "0",
+      "sender_id": "0",
       "fname": '"${lookup[$id]}"'
-      "mimetype": x
-      "voice": true
-      "video": true
+      "mimetype": "x"
+      "voice": "true"
+      "video": "true"
     }'
 
     curl -s -X POST -H "Content-Type: application/json" -d "$json" "$URL"
