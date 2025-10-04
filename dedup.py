@@ -77,11 +77,11 @@ def main():
                         help="Database URL (eg. sqlite or pgsql path)")
     args = parser.parse_args()
 
-    logger.info(f"Initializing database")
+    logger.info("Initializing database")
     engine = create_engine(args.db, echo=False)
     SQLBase.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
-    logger.info(f"Database initialized")
+    logger.info("Database initialized")
 
     if args.directory:
         process_path(args.directory, session)
@@ -102,11 +102,10 @@ def main():
                 process_path(job.path, session)
             except Exception as e:
                 job.update_status(JobStatus.FAILED, session)
-                logger.info(f"Job failed")
-                raise e
+                logger.exception("Job failed")
 
             job.update_status(JobStatus.DONE, session)
-            logger.info(f"Job done")
+            logger.info("Job done")
         except KeyboardInterrupt:
             break
 
