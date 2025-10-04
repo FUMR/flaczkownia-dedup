@@ -17,5 +17,7 @@ done
 for id in "${!lookup[@]}"; do
     echo "$id"
 done | sort -nr | while read -r id; do
-    curl -s -X POST -H "Content-Type: application/json" -d '{"fname": '"${lookup[$id]}"'}' "$URL"
+    echo "Processing message $id (filename ${lookup[$id]})"
+    curl -s -X POST -H "Content-Type: application/json" -d '{"fname": "'"${lookup[$id]}"'"}' "$URL"
+    echo
 done
