@@ -7,33 +7,14 @@ from time import sleep
 
 import audioprint
 import mediafile
-import sqlalchemy as sa
-import sqlalchemy.orm
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from mediafile import MediaFile
 
-from lib.jobqueue import Queue, Status
-from lib.sqlbase import SQLBase
+from lib.sqlmodels import SQLBase, Track, Queue, JobStatus
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
-
-
-class Track(SQLBase):
-    __tablename__ = "tracks"
-
-    id = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
-    path = sa.Column(sa.String, unique=True, nullable=False)
-    acoustic_fingerprint = sa.Column(sa.BigInteger, nullable=False)
-    album = sa.Column(sa.String)
-    disc_number = sa.Column(sa.Integer)
-    track_number = sa.Column(sa.Integer)
-    duplicate = sa.Column(sa.Boolean, nullable=False, default=False)
-
-    __table_args__ = (
-        sa.Index("idx_path", "path", unique=True),
-        sa.Index("idx_duplicate", "acoustic_fingerprint", "album", "disc_number", "track_number",
-                 unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
-    )
 
 
 def _recursive_path_walk(path):
@@ -97,38 +78,37 @@ def main():
     args = parser.parse_args()
 
     logger.info(f"Initializing database")
-    engine = sa.create_engine(args.db, echo=False)
+    engine = create_engine(args.db, echo=False)
     SQLBase.metadata.create_all(engine)
-    session = sa.orm.sessionmaker(bind=engine)()
+    session = sessionmaker(bind=engine)()
     logger.info(f"Database initialized")
 
     if args.directory:
         process_path(args.directory, session)
         return
 
-    running = True
-    while running:
+    while True:
         try:
-            job: Queue | None = session.query(Queue).filter_by(status=Status.PENDING).order_by(Queue.created_at).first()
+            job: Queue | None = session.query(Queue).filter_by(status=JobStatus.PENDING).order_by(Queue.created_at).first()
 
             if job is None:
                 sleep(1)
                 continue
 
             logger.info(f"Starting processing of job with queue_id: {job.id}")
-            job.update_status(Status.PROCESSING, session)
+            job.update_status(JobStatus.PROCESSING, session)
 
             try:
                 process_path(job.path, session)
             except Exception as e:
-                job.update_status(Status.FAILED, session)
+                job.update_status(JobStatus.FAILED, session)
                 logger.info(f"Job failed")
                 raise e
 
-            job.update_status(Status.DONE, session)
+            job.update_status(JobStatus.DONE, session)
             logger.info(f"Job done")
         except KeyboardInterrupt:
-            running = False
+            break
 
 
 if __name__ == "__main__":

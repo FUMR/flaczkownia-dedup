@@ -11,8 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import uvicorn
 
-from lib.jobqueue import Queue
-from lib.sqlbase import SQLBase
+from lib.sqlmodels import SQLBase, Queue
 
 
 class TGMountWebhook(BaseModel):
