@@ -11,7 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from mediafile import MediaFile
 
-from lib.sqlmodels import SQLBase, Track, Queue, JobStatus
+from lib.sqlmodels import SQLBase, Track, Queue, JobStatus, UnknownFile
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
 logger = logging.getLogger(__name__)
@@ -35,13 +35,16 @@ def process_path(path, session):
         logger.info(f"Processing file: {file}")
 
         # Skip already indexed
-        if session.query(Track).filter_by(path=file).first():
+        if session.query(Track).filter_by(path=file).first() or session.query(UnknownFile).filter_by(path=file).first():
             logger.info(f"Skipping already indexed file: {file}")
             continue
 
         try:
             mf = MediaFile(file)
         except mediafile.FileTypeError:
+            uf = UnknownFile(path=file)
+            session.add(uf)
+            session.commit()
             logger.info(f"Skipping file in unsupported format: {file}")
             continue
 
@@ -51,7 +54,7 @@ def process_path(path, session):
         existing = session.query(Track).filter_by(
             acoustic_fingerprint=fp,
             album=mf.album,
-            disc_number = mf.disc,
+            disc_number=mf.disc,
             track_number=mf.track,
         ).first()
 
@@ -89,7 +92,8 @@ def main():
 
     while True:
         try:
-            job: Queue | None = session.query(Queue).filter_by(status=JobStatus.PENDING).order_by(Queue.created_at).first()
+            job: Queue | None = session.query(Queue).filter_by(status=JobStatus.PENDING).order_by(
+                Queue.created_at).first()
 
             if job is None:
                 sleep(1)

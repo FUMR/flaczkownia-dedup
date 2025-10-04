@@ -49,5 +49,16 @@ class Track(SQLBase):
     __table_args__ = (
         Index("idx_track_path", "path", unique=True),
         Index("idx_track_duplicate", "acoustic_fingerprint", "album", "disc_number", "track_number",
-                 unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
+              unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
+    )
+
+
+class UnknownFile(SQLBase):
+    __tablename__ = "unknown_files"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    path = Column(String, unique=True, nullable=False)
+
+    __table_args__ = (
+        Index("idx_unknown_file_path", "path", unique=True),
     )
