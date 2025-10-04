@@ -1,0 +1,13 @@
+services:
+  dedup:
+    build: .
+    volumes:
+      - # SQLite3 database directory
+        source: ./data
+        target: /app/data
+        type: bind
+    command:
+      - -d
+      - "/home/loobson/Downloads/Telegram Desktop/67890 Young Leosia - Hulanki deezer"
+      - --db
+      - sqlite:///data/dedup.sqlite3
