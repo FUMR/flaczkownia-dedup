@@ -10,6 +10,8 @@ ARG         LLVM_VERSION="20.1.8-r0"
 ARG         FFMPEG_VERSION="6.1.2-r2"
 # renovate: datasource=repology depName=alpine_3_22/bash versioning=loose
 ARG         BASH_VERSION="5.2.37-r0"
+# renovate: datasource=repology depName=alpine_3_22/jq versioning=loose
+ARG         JQ_VERSION="1.8.0-r0"
 # renovate: datasource=repology depName=alpine_3_22/git versioning=loose
 ARG         GIT_VERSION="2.49.1-r0"
 # renovate: datasource=repology depName=alpine_3_22/build-base versioning=loose
@@ -36,6 +38,7 @@ RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-
               llvm20-gtest=${LLVM_VERSION} \
               ffmpeg=${FFMPEG_VERSION} \
               bash=${BASH_VERSION} \
+              jq=${JQ_VERSION} \
             && \
             apk add --no-cache --virtual .build-deps \
               git=${GIT_VERSION} \

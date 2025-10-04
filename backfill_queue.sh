@@ -18,6 +18,6 @@ for id in "${!lookup[@]}"; do
     echo "$id"
 done | sort -nr | while read -r id; do
     echo "Processing message $id (filename ${lookup[$id]})"
-    curl -s -X POST -H "Content-Type: application/json" -d '{"fname": "'"${lookup[$id]}"'"}' "$URL"
+    curl -s -X POST -H "Content-Type: application/json" -d "$(jq -n --arg 'fname' "${lookup[$id]}" '{fname: $fname}')" "$URL"
     echo
 done
