@@ -18,7 +18,7 @@ jobs:
     uses: JuniorJPDJ/containers/.github/workflows/docker-parallel-multiarch-build.yml@master
     with:
       title: flaczkownia-dedup
-      platforms: 'linux/amd64,linux/386,linux/arm/v7,linux/arm64'
+      platforms: 'linux/amd64,linux/arm64'
       buildkit-mount-caches: '{"home-cache": "/root/.cache"}'
       buildkit-mount-cache-ids-append-platform: true
       registry: ghcr.io
