@@ -34,6 +34,7 @@ def get_session():
     with sessionmaker(bind=engine)() as session:
         yield session
 
+
 # ------------------------------------------------------------------------------
 # Models
 # ------------------------------------------------------------------------------
@@ -58,6 +59,7 @@ class Queue(Base):
         Index("idx_path", "path", unique=True),
     )
 
+
 # ------------------------------------------------------------------------------
 # Schemas
 # ------------------------------------------------------------------------------
@@ -78,6 +80,7 @@ class Deduplicate(BaseModel):
     reply_to_msg_id: int | None = None
     reply_to_sender_id: int | None = None
 
+
 # ------------------------------------------------------------------------------
 # Lifespan (modern replacement for startup/shutdown events)
 # ------------------------------------------------------------------------------
@@ -94,6 +97,7 @@ async def lifespan(app: FastAPI):
     # Shutdown logic
     engine.dispose()
 
+
 # ------------------------------------------------------------------------------
 # FastAPI App
 # ------------------------------------------------------------------------------
@@ -103,6 +107,7 @@ app = FastAPI(
     debug=False,
     lifespan=lifespan,
 )
+
 
 # ------------------------------------------------------------------------------
 # Routes
@@ -119,15 +124,10 @@ async def dedup(data: Deduplicate, response: Response, session: Annotated[sessio
     response.status_code = 204
     return None
 
+
 # ------------------------------------------------------------------------------
 # Run with: uvicorn main:app --reload
 # ------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-
-
-
-
