@@ -103,6 +103,7 @@ def main():
             except Exception as e:
                 job.update_status(JobStatus.FAILED, session)
                 logger.exception("Job failed")
+                continue
 
             job.update_status(JobStatus.DONE, session)
             logger.info("Job done")
