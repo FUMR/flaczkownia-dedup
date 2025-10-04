@@ -21,10 +21,10 @@ done | sort -nr | while read -r id; do
       "msg_id": '"$id"',
       "chat_id": "0",
       "sender_id": "0",
-      "fname": '"${lookup[$id]}"'
-      "mimetype": "x"
-      "voice": "true"
-      "video": "true"
+      "fname": '"${lookup[$id]}"',
+      "mimetype": "x",
+      "voice": true,
+      "video": true
     }'
 
     curl -s -X POST -H "Content-Type: application/json" -d "$json" "$URL"
