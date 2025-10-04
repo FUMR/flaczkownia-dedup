@@ -17,16 +17,5 @@ done
 for id in "${!lookup[@]}"; do
     echo "$id"
 done | sort -nr | while read -r id; do
-    json='{
-      "msg_id": '"$id"',
-      "chat_id": 0,
-      "sender_id": 0,
-      "fname": '"${lookup[$id]}"',
-      "mimetype": "x",
-      "size": 0,
-      "voice": true,
-      "video": true
-    }'
-
-    curl -s -X POST -H "Content-Type: application/json" -d "$json" "$URL"
+    curl -s -X POST -H "Content-Type: application/json" -d '{"fname": '"${lookup[$id]}"'}' "$URL"
 done
