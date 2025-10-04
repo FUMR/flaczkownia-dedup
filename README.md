@@ -1,38 +1,60 @@
 # Flaczkownia Dedup
 
-## Story
+## 📖 Story
 
-On flaczkownia we have looots of downloaded tracks, more than half are downloaded multiple times.
-We need a way to not import those to self-hosted streaming services mutliple times as this makes library literally unusable.
+At **Flaczkownia**, we’ve accumulated a massive collection of downloaded tracks — and more than half of them are duplicates.
+Importing all these duplicates into our self-hosted streaming services would make the music library unusable.
+
+We needed a way to **avoid importing the same track multiple times**, even if it comes from different sources.
 
 
-## Analysis of the problem
+## 🔍 Problem Analysis
 
-After time-consuming analysis of the problem @JuniorJPDJ and @lobsonwf came up with basic assumptions:
-- We SHOULD NOT have duplicated tracks in the same album (doesn't matter if those came from the same or multiple sources)
-- Tidal and Deezer downloaded tracks CAN create separate albums if metadata differs (preferably no, but we can live with that)
-- Sometimes - when track is first released as a single, then album containing the track is released - we should not deduplicate that - those are separate releases
-- We don't want to remove older tracks to supersede those with new ones after those are imported already - this can create problems with disappearing tracks with metadata created by external software, like:
+After time-consuming analysis of the problem, @JuniorJPDJ and @lobsonwf came up with basic assumptions:
+- **No duplicated tracks on the same album** - regardless of source.
+- **Tidal and Deezer** tracks can create separate albums if metadata differs (not ideal, but acceptable).
+- A track first released as a single and later included in an album should not be deduplicated — those are distinct releases.
+- We **must not remove older tracks** that have already been imported, even if a newer version exists. Otherwise, we risk losing metadata created by external tools, such as:
   - favourites
   - ratings
   - comments
   - share links
-- We don't care too much about directory structure - external software will anyway store database with parsed files after import
-- We need to pass new files import to dedup and allow checking of duplicates in a real time
-- Backfill can be external script, no need for backfill functionality in main daemon
-- Backfill should prefer newer files, live dedup should prefer older files - we assume backfill is not imported to external software yet so no additional metadata exist yet
+- Directory structure doesn’t matter — external tools will manage their own database after import.
+- We need to pass new files import to dedup and allow checking of duplicates in real time
+- Backfill:
+  - Can be handled by a separate script - no need to include it in the main daemon
+  - Should prefer newer files (since they aren’t imported yet)
+  - Live dedup should prefer older files (since those are already imported and possibly have metadata)
 
 
-## The solution
+## 💡 The solution
 
-We somehow need to understand which files are similar enough (acoustic-wise). Acoustic hashing algorithms are great solution for that problem.
-That's not enough tho as we should not remove singles or album released tracks that were released before as singles - that would make albums incomplete.
+We somehow need to understand which files are similar enough (acoustic-wise). Acoustic hashing algorithms are a great solution for that problem.
+However, this alone doesn’t solve everything - we also need to distinguish between singles and album releases to avoid breaking the album's completeness.
 
-What we came up with is storing unique tuple of album name, album track number and acoustic hash of the track.
-That would make sure that we deduplicate only inside the album and we don't replace miss-placed single albums from albums with the same name as the single.
+We decided to use a unique tuple consisting of:
+> (Album Name, Album Track Number, Acoustic Hash)
 
-If there's no existing track with that tuple, that would mean the track is not duplicate and we can import it safely.
+This ensures that:
+- Deduplication happens **within the same album only**
+- Singles and album versions remain distinct, even if they share the same title
+- We deduplicate only inside the album, misplaced tracks with the same album name won’t overwrite each other
 
-AcoustID / Chromaprint was ideal first choice for acoustic hash as it's popular and seems to work great for finding track metadata based on acoustic characteristics. What we found after trying generating those for album downloaded from Tidal and Deezer was that those hashes were DIFFERENT. That means it doesn't suit our needs. We asked several AI agents to suggest us more similar solutions. We came up with LastFM fingerprinting library, which we found not working with Python 3 (LOL).
+If a tuple doesn’t already exist — the track is **safe to import**.
 
-Next one we found was audioprint. We tested it and it was working PERFECTLY. After some shit-talk about hash collisions (those hashes aren't too big) we decided to use it as we don't care too much about collisions - we only compare the tuples, chances that album contains a collision is minimal and we for sure prefer that than having different hashes for the same track. Unfortunetaly it's not on pypi nor does contain setup.py or pyproject.toml, we decided to fork it and prepare PR with pyproject file. We use fork in requirements.txt but it would be great to move to official repository someday.
+## 🧠 Acoustic hashing journey
+
+Initially, we chose **AcoustID / Chromaprint** - a well-known and reliable acoustic hashing system. Unfortunately, when testing with tracks from Tidal and Deezer, we discovered that their hashes were different for the same audio. This made them unsuitable for our use case.
+
+We explored other options - including LastFM’s fingerprinting library, which turned out to be incompatible with Python 3...
+
+Finally, we found audioprint, which:
+- aligns perfectly with our use case
+- produces consistent hashes across different audio sources
+- has minimal risk of collisions (acceptable for our tuple-based comparison)
+
+Although **audioprint** isn’t available on PyPI and lacks packaging files (`setup.py`, `pyproject.toml`), we:
+- forked the repository
+- added the necessary packaging support
+- use our fork in requirements.txt
+- looking forward to contributing our changes to upstream in the future
