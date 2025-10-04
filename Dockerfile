@@ -2,8 +2,14 @@ FROM        python:3.13.7-alpine@sha256:9ba6d8cbebf0fb6546ae71f2a1c14f6ffd2fdab8
 
 # renovate: datasource=repology depName=alpine_3_22/gcc versioning=loose
 ARG         GCC_VERSION="14.2.0-r6"
+# renovate: datasource=repology depName=alpine_3_22/libsndfile versioning=loose
+ARG         LIBSNDFILE_VERSION="1.2.2-r2"
 # renovate: datasource=repology depName=alpine_3_22/llvm20 versioning=loose
 ARG         LLVM_VERSION="20.1.8-r0"
+# renovate: datasource=repology depName=alpine_3_22/ffmpeg versioning=loose
+ARG         FFMPEG_VERSION="6.1.2-r2"
+# renovate: datasource=repology depName=alpine_3_22/bash versioning=loose
+ARG         BASH_VERSION="5.2.37-r0"
 # renovate: datasource=repology depName=alpine_3_22/git versioning=loose
 ARG         GIT_VERSION="2.49.1-r0"
 # renovate: datasource=repology depName=alpine_3_22/build-base versioning=loose
@@ -24,9 +30,12 @@ ADD         requirements.txt .
 RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-$TARGETPLATFORM \
             apk add --no-cache \
               libgcc=${GCC_VERSION} \
+              libsndfile=${LIBSNDFILE_VERSION} \
               llvm20=${LLVM_VERSION} \
               llvm20-static=${LLVM_VERSION} \
               llvm20-gtest=${LLVM_VERSION} \
+              ffmpeg=${FFMPEG_VERSION} \
+              bash=${BASH_VERSION} \
             && \
             apk add --no-cache --virtual .build-deps \
               git=${GIT_VERSION} \
@@ -39,10 +48,14 @@ RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-
             && \
             pip install -r requirements.txt && \
             apk del .build-deps && \
-            chown -R nobody:nogroup /app
+            chown -R nobody:nogroup /app && \
+            ln -s /usr/lib/libsndfile.so.1 /usr/lib/libsndfile.so
 
 COPY        --chown=nobody:nogroup . .
 
 USER        nobody
 
-ENTRYPOINT  [ "python", "deduplicate.py" ]
+ENV         PYTHONUNBUFFERED="1"
+ENV         NUMBA_CACHE_DIR="/tmp/numba"
+
+ENTRYPOINT  [ "python", "dedup.py" ]

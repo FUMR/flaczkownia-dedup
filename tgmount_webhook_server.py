@@ -2,6 +2,7 @@
 
 import argparse
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 import logging
 
@@ -15,20 +16,7 @@ from lib.sqlmodels import SQLBase, Queue
 
 
 class TGMountWebhook(BaseModel):
-    msg_id: int
-    chat_id: int
-    sender_id: int
     fname: str
-
-    mimetype: str
-    size: int
-
-    voice: bool
-    video: bool
-
-    fwd_sender_id: int | None = None
-    reply_to_msg_id: int | None = None
-    reply_to_sender_id: int | None = None
 
 
 def get_session():
@@ -60,7 +48,7 @@ app = FastAPI(
     path="/tgmount_webhook"
 )
 async def dedup(data: TGMountWebhook, session: Annotated[sessionmaker, Depends(get_session)]):
-    q = Queue(path=data.fname)
+    q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
     session.add(q)
     session.commit()
 
@@ -74,8 +62,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Flaczkownia dedup tgmount webhook server")
     parser.add_argument("--db", "--database", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
+    parser.add_argument("--basedir", default="./",
+                        help="Path prepended to jobs added to queue from webhook")
     parser.add_argument("--host", default="0.0.0.0", help="Address to listen on")
-    parser.add_argument("--port", default=8000, help="Port to listen on")
+    parser.add_argument("--port", default=8000, type=int, help="Port to listen on")
     args = parser.parse_args()
 
     engine = create_engine(args.db, echo=False)

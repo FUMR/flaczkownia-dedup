@@ -4,6 +4,7 @@
 .idea/
 .venv/
 data/
+.env
 .gitignore
 docker-compose.yaml
 README.md

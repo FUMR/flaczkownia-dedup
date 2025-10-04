@@ -1,13 +1,107 @@
+# mkdir -p ./data/tgmount/mnt/flaczkownia ./data/ziprofs/mnt/flaczkownia ./data/dedup
+# chown -R 65534:65534 ./data/tgmount ./data/ziprofs ./data/dedup
+# docker compose run tgmount --list-dialogs --ipv6
+
 services:
-  dedup:
-    build: .
+  tgmount:
+    image: ghcr.io/juniorjpdj/tgmount
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
     volumes:
-      - # SQLite3 database directory
-        source: ./data
+      - source: ./data/tgmount
         target: /app/data
         type: bind
+      - source: ./data/tgmount/mnt
+        target: /app/data/mnt
+        type: bind
+        bind:
+          propagation: rshared
+    environment:
+      PYTHONUNBUFFERED: "1"
+      TGAPP: "${TGAPP}"
     command:
-      - -d
-      - "/home/loobson/Downloads/Telegram Desktop/67890 Young Leosia - Hulanki deezer"
+      - --ipv6
+      - --all-files
+      - --reverse
+      - --debug
+      - --mount
+      - ./mnt/flaczkownia
+      - --new-file-webhook-url
+      - http://127.0.0.1:9999/api/v1/tgmount_webhook
+      - --fuse-options
+      - allow_other
+      - --id
+      - "-1001562494246"
+
+  ziprofs:
+    image: ghcr.io/juniorjpdj/ziprofs
+    restart: unless-stopped
+    privileged: true
+    ulimits:
+      nofile: 524288
+    volumes:
+      - source: ./data/tgmount/mnt
+        target: /app/root
+        read_only: true
+        type: bind
+        bind:
+          propagation: rslave
+      - source: ./data/ziprofs/mnt
+        target: /app/mnt
+        type: bind
+        bind:
+          propagation: rshared
+    environment:
+      PYTHONUNBUFFERED: "1"
+    entrypoint:
+      - ash
+      - -c
+    stop_signal: SIGINT
+    command:
+      - python ziprofs.py /app/root/flaczkownia /app/mnt/flaczkownia -o allowother,foreground,async,debug,cachesize=3000 2>&1 | grep -vE '((->|<-) (getattr|getxattr|access|opendir|readdir|releasedir|ioctl|read|flush)) '
+
+  dedup:
+    build: .
+    image: test/dedup
+    restart: unless-stopped
+    volumes:
+      - # SQLite3 database directory
+        source: ./data/dedup/
+        target: /app/data
+        type: bind
+      - # Dedup dir
+        source: ./data/ziprofs/mnt
+        target: /app/data/music
+        read_only: true
+        type: bind
+        bind:
+          propagation: rslave
+    stop_signal: SIGINT
+    command:
       - --db
-      - sqlite:///data/dedup.sqlite3
+      - sqlite:////app/data/dedup.sqlite3
+
+  webhook_server:
+    image: test/dedup
+    restart: unless-stopped
+    volumes:
+      - # SQLite3 database directory
+        source: ./data/dedup/
+        target: /app/data
+        type: bind
+    stop_signal: SIGINT
+    entrypoint:
+      - python
+      - tgmount_webhook_server.py
+    ports:
+      - "127.0.0.1:9999:9999"
+    command:
+      - --basedir
+      - data/music/flaczkownia
+      - --db
+      - sqlite:////app/data/dedup.sqlite3
+      - --host
+      - 0.0.0.0
+      - --port
+      - "9999"
