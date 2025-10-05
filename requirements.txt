@@ -5,4 +5,5 @@ fastapi==0.118.0
 httpx==0.28.1
 pydantic==2.11.10
 uvicorn==0.37.0
+pygobject==3.54.2
 audioprint@git+https://github.com/JuniorJPDJ/audioprint@pyproject
