@@ -12,6 +12,10 @@ ARG         FFMPEG_VERSION="6.1.2-r2"
 ARG         BASH_VERSION="5.2.37-r0"
 # renovate: datasource=repology depName=alpine_3_22/jq versioning=loose
 ARG         JQ_VERSION="1.8.0-r0"
+# renovate: datasource=repology depName=alpine_3_22/coreutils versioning=loose
+ARG         COREUTILS_VERSION="9.7-r1"
+# renovate: datasource=repology depName=alpine_3_22/curl versioning=loose
+ARG         CURL_VERSION="8.14.1-r2"
 # renovate: datasource=repology depName=alpine_3_22/git versioning=loose
 ARG         GIT_VERSION="2.49.1-r0"
 # renovate: datasource=repology depName=alpine_3_22/build-base versioning=loose
@@ -39,6 +43,8 @@ RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-
               ffmpeg=${FFMPEG_VERSION} \
               bash=${BASH_VERSION} \
               jq=${JQ_VERSION} \
+              coreutils=${COREUTILS_VERSION} \
+              curl=${CURL_VERSION} \
             && \
             apk add --no-cache --virtual .build-deps \
               git=${GIT_VERSION} \
