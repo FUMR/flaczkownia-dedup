@@ -7,6 +7,8 @@ URL="$2"
 
 declare -A lookup
 
+cd "$DIR" || exit 1
+
 for f in *; do
     filename="$(basename "$f")"
     msg_id="${filename%% *}"
