@@ -54,6 +54,7 @@ def process_path(path, session):
         existing = session.query(Track).filter_by(
             acoustic_fingerprint=fp,
             album=mf.album,
+            mb_albumid=mf.mb_albumid,
             disc_number=mf.disc,
             track_number=mf.track,
         ).first()
@@ -62,6 +63,7 @@ def process_path(path, session):
             path=file,
             acoustic_fingerprint=fp,
             album=mf.album,
+            mb_albumid=mf.mb_albumid,
             disc_number=mf.disc,
             track_number=mf.track,
             duplicate=existing is not None,

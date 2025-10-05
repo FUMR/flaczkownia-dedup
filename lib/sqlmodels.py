@@ -42,13 +42,14 @@ class Track(SQLBase):
     path = Column(String, unique=True, nullable=False)
     acoustic_fingerprint = Column(BigInteger, nullable=False)
     album = Column(String)
+    mb_albumid = Column(String)
     disc_number = Column(Integer)
     track_number = Column(Integer)
     duplicate = Column(Boolean, nullable=False, default=False)
 
     __table_args__ = (
         Index("idx_track_path", "path", unique=True),
-        Index("idx_track_duplicate", "acoustic_fingerprint", "album", "disc_number", "track_number",
+        Index("idx_track_duplicate", "acoustic_fingerprint", "album", "mb_albumid", "disc_number", "track_number",
               unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
     )
 
