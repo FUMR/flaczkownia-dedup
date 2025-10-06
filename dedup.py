@@ -6,6 +6,7 @@ import os
 from time import sleep
 
 import audioprint
+import librosa
 import mediafile
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -28,6 +29,15 @@ def _recursive_path_walk(path):
         yield path
 
 
+def _audioprint_resampled(file_path):
+    raw_pcm_data, sr = audioprint.read_audio_file(file_path)
+    if sr != 44100:
+        # workaround for different hashes for different sample rates
+        raw_pcm_data = librosa.resample(raw_pcm_data, orig_sr=sr, target_sr=44100)
+
+    return audioprint.audio_phash(raw_pcm_data, 44100)
+
+
 def process_path(path, session):
     logger.info(f"Processing path: {path}")
 
@@ -48,7 +58,7 @@ def process_path(path, session):
             logger.info(f"Skipping file in unsupported format: {file}")
             continue
 
-        fp = audioprint.fingerprint_file(file)
+        fp = _audioprint_resampled(file)
 
         # Check if the same track already exists
         existing = session.query(Track).filter_by(
