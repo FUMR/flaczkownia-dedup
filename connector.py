@@ -59,7 +59,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
     logger = logging.getLogger(__name__)
 
-    parser = argparse.ArgumentParser(description="Flaczkownia dedup tgmount webhook server")
+    parser = argparse.ArgumentParser(description="Flaczkownia dedup connector")
     parser.add_argument("--db", "--database", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
     parser.add_argument("--basedir", default="./",

@@ -79,7 +79,7 @@ services:
       - --db
       - sqlite:////app/data/dedup.sqlite3
 
-  webhook_server:
+  connector:
     image: ghcr.io/fumr/flaczkownia-dedup
     restart: unless-stopped
     volumes:
@@ -90,7 +90,7 @@ services:
     stop_signal: SIGINT
     entrypoint:
       - python
-      - tgmount_webhook_server.py
+      - connector.py
     ports:
       - "127.0.0.1:9999:9999"
     command:
