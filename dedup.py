@@ -4,6 +4,7 @@ import argparse
 import logging
 import multiprocessing
 import os
+import httpx
 from time import sleep
 
 import audioprint
@@ -40,7 +41,7 @@ def _audioprint_resampled(file_path):
     return audioprint.audio_phash(raw_pcm_data, 44100)
 
 
-def process_path(path, session, multiprocess_pool):
+def process_path(path, session, http_session, multiprocess_pool):
     logger.info(f"Processing path: {path}")
 
     for file in _recursive_path_walk(path):
@@ -94,6 +95,8 @@ def process_path(path, session, multiprocess_pool):
 
         session.add(track)
         session.commit()
+        if existing is None:
+            http_session.post(path=f"dedup_webhook", json={"fname": file})
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
@@ -103,6 +106,8 @@ def main():
     parser.add_argument("--directory", help="Path to flaczkownia directory. Starts in queue mode if not provided.")
     parser.add_argument("--db", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
+    parser.add_argument("--connector", default="http://connector:8000",
+                        help="Connector URL")
     args = parser.parse_args()
 
     logger.info("Initializing database")
@@ -111,10 +116,14 @@ def main():
     session = sessionmaker(bind=engine)()
     logger.info("Database initialized")
 
+    logger.info("Initializing connector session")
+    http_session = httpx.Client(base_url=args.connector)
+    logger.info("Connector session initialized")
+
     ctx = multiprocessing.get_context("spawn")
     with ctx.Pool(processes=1, maxtasksperchild=50) as multiprocess_pool:
         if args.directory:
-            process_path(args.directory, session, multiprocess_pool)
+            process_path(args.directory, session, http_session, multiprocess_pool)
             return
 
         while True:
@@ -144,7 +153,7 @@ def main():
                 logger.info(f"Starting processing of job with queue_id: {job.id}")
 
                 try:
-                    process_path(job.path, session, multiprocess_pool)
+                    process_path(job.path, session, http_session, multiprocess_pool)
                 except Exception as e:
                     job.status = JobStatus.FAILED
                     session.commit()
