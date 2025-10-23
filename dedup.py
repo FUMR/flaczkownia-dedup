@@ -72,7 +72,7 @@ def process_path(path, session, http_session, multiprocess_pool, urls=None):
             logger.info(f"Skipping file in unsupported format: {file}")
             if urls is not None:
                 for url in urls:
-                    http_session.post(url, json={"fname": file})
+                    http_session.post(url, json=uf.as_dict())
             continue
 
         fp = multiprocess_pool.apply(_audioprint_resampled, (file,))
@@ -100,7 +100,7 @@ def process_path(path, session, http_session, multiprocess_pool, urls=None):
         session.commit()
         if existing is None is not urls:
             for url in urls:
-                http_session.post(url, json={"fname": file})
+                http_session.post(url, json=track.as_dict())
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
