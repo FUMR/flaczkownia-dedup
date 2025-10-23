@@ -39,7 +39,7 @@ def _audioprint_resampled(file_path):
     return audioprint.audio_phash(raw_pcm_data, 44100)
 
 
-def process_path(path, db_session, http_session):
+def process_path(path, db_session, http_session, urls=None):
     logger.info(f"Processing path: {path}")
 
     for file in _recursive_path_walk(path):
@@ -58,6 +58,9 @@ def process_path(path, db_session, http_session):
             db_session.add(uf)
             db_session.commit()
             logger.info(f"Skipping file in unsupported format: {file}")
+            if urls is not None:
+                for url in urls:
+                    http_session.post(url, json={"fname": file})
             continue
 
         fp = _audioprint_resampled(file)
@@ -83,8 +86,9 @@ def process_path(path, db_session, http_session):
 
         db_session.add(track)
         db_session.commit()
-        if existing is None:
-            http_session.post(path=f"dedup_webhook", json={"fname": file})
+        if existing is None is not urls:
+            for url in urls:
+                http_session.post(url, json={"fname": file})
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
@@ -94,8 +98,8 @@ def main():
     parser.add_argument("--directory", help="Path to flaczkownia directory. Starts in queue mode if not provided.")
     parser.add_argument("--db", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
-    parser.add_argument("--connector", default="http://connector:8000",
-                        help="Connector URL")
+    parser.add_argument('--webhook-url', action='append', default=None,
+                        help='Send request to this URL when not duplicated or unknown mediatype file appears', type=str)
     args = parser.parse_args()
 
     logger.info("Initializing database")
@@ -105,11 +109,11 @@ def main():
     logger.info("Database initialized")
 
     logger.info("Initializing connector session")
-    http_session = httpx.Client(base_url=args.connector)
+    http_session = httpx.Client()
     logger.info("Connector session initialized")
 
     if args.directory:
-        process_path(args.directory, db_session, http_session)
+        process_path(args.directory, db_session, http_session, args.webhook_url)
         return
 
     while True:
@@ -125,7 +129,7 @@ def main():
             job.update_status(JobStatus.PROCESSING, db_session)
 
             try:
-                process_path(job.path, db_session, http_session)
+                process_path(job.path, db_session, http_session, args.webhook_url)
             except Exception as e:
                 job.update_status(JobStatus.FAILED, db_session)
                 logger.exception("Job failed")
