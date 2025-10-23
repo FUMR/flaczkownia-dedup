@@ -60,7 +60,7 @@ def process_path(path, db_session, http_session, urls=None):
             logger.info(f"Skipping file in unsupported format: {file}")
             if urls is not None:
                 for url in urls:
-                    http_session.post(url, json={"fname": file})
+                    http_session.post(url, json=uf.as_dict())
             continue
 
         fp = _audioprint_resampled(file)
@@ -88,7 +88,7 @@ def process_path(path, db_session, http_session, urls=None):
         db_session.commit()
         if existing is None is not urls:
             for url in urls:
-                http_session.post(url, json={"fname": file})
+                http_session.post(url, json=track.as_dict())
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
