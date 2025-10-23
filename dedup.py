@@ -41,7 +41,7 @@ def _audioprint_resampled(file_path):
     return audioprint.audio_phash(raw_pcm_data, 44100)
 
 
-def process_path(path, session, http_session, multiprocess_pool):
+def process_path(path, session, http_session, multiprocess_pool, urls=None):
     logger.info(f"Processing path: {path}")
 
     for file in _recursive_path_walk(path):
@@ -70,6 +70,9 @@ def process_path(path, session, http_session, multiprocess_pool):
             session.add(uf)
             session.commit()
             logger.info(f"Skipping file in unsupported format: {file}")
+            if urls is not None:
+                for url in urls:
+                    http_session.post(url, json={"fname": file})
             continue
 
         fp = multiprocess_pool.apply(_audioprint_resampled, (file,))
@@ -95,8 +98,9 @@ def process_path(path, session, http_session, multiprocess_pool):
 
         session.add(track)
         session.commit()
-        if existing is None:
-            http_session.post(path=f"dedup_webhook", json={"fname": file})
+        if existing is None is not urls:
+            for url in urls:
+                http_session.post(url, json={"fname": file})
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
@@ -106,8 +110,8 @@ def main():
     parser.add_argument("--directory", help="Path to flaczkownia directory. Starts in queue mode if not provided.")
     parser.add_argument("--db", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
-    parser.add_argument("--connector", default="http://connector:8000",
-                        help="Connector URL")
+    parser.add_argument('--webhook-url', action='append', default=None,
+                        help='Send request to this URL when not duplicated or unknown mediatype file appears', type=str)
     args = parser.parse_args()
 
     logger.info("Initializing database")
@@ -117,13 +121,13 @@ def main():
     logger.info("Database initialized")
 
     logger.info("Initializing connector session")
-    http_session = httpx.Client(base_url=args.connector)
+    http_session = httpx.Client()
     logger.info("Connector session initialized")
 
     ctx = multiprocessing.get_context("spawn")
     with ctx.Pool(processes=1, maxtasksperchild=50) as multiprocess_pool:
         if args.directory:
-            process_path(args.directory, session, http_session, multiprocess_pool)
+            process_path(args.directory, session, http_session, multiprocess_pool, args.webhook_url)
             return
 
         while True:
@@ -153,7 +157,7 @@ def main():
                 logger.info(f"Starting processing of job with queue_id: {job.id}")
 
                 try:
-                    process_path(job.path, session, http_session, multiprocess_pool)
+                    process_path(job.path, session, http_session, multiprocess_pool, args.webhook_url)
                 except Exception as e:
                     job.status = JobStatus.FAILED
                     session.commit()
