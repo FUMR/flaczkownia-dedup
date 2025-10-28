@@ -12,7 +12,7 @@ ARG         GSTREAMER_VERSION="1.26.3-r0"
 ARG         GIT_VERSION="2.49.1-r0"
 # renovate: datasource=repology depName=alpine_3_22/build-base versioning=loose
 ARG         BUILD_BASE_VERSION="0.5-r3"
-# renovate: datasource=repology depName=alpine_3_22/cario-dev versioning=loose
+# renovate: datasource=repology depName=alpine_3_22/cario versioning=loose
 ARG         CARIO_VERSION="1.18.4-r0"
 # renovate: datasource=repology depName=alpine_3_22/cmake versioning=loose
 ARG         CMAKE_VERSION="3.31.7-r1"
