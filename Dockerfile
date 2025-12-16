@@ -15,7 +15,7 @@ ARG         BUILD_BASE_VERSION="0.5-r3"
 # renovate: datasource=repology depName=alpine_3_23/cairo-dev versioning=loose
 ARG         CAIRO_VERSION="1.18.4-r0"
 # renovate: datasource=repology depName=alpine_3_23/cmake versioning=loose
-ARG         CMAKE_VERSION="3.31.7-r1"
+ARG         CMAKE_VERSION="4.1.3-r0"
 # renovate: datasource=repology depName=alpine_3_23/libffi-dev versioning=loose
 ARG         LIBFFI_VERSION="3.4.8-r0"
 # renovate: datasource=repology depName=alpine_3_23/libretls-dev versioning=loose
