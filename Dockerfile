@@ -1,24 +1,24 @@
 FROM        python:3.14.2-alpine@sha256:2a77c2640cc80f5506babd027c883abc55f04d44173fd52eeacea9d3b978e811
 
-# renovate: datasource=repology depName=alpine_3_22/gcc versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/gcc versioning=loose
 ARG         GCC_VERSION="14.2.0-r6"
-# renovate: datasource=repology depName=alpine_3_22/libsndfile versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/libsndfile versioning=loose
 ARG         LIBSNDFILE_VERSION="1.2.2-r2"
-# renovate: datasource=repology depName=alpine_3_22/llvm20 versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/llvm20 versioning=loose
 ARG         LLVM_VERSION="20.1.8-r0"
-# renovate: datasource=repology depName=alpine_3_22/gstreamer versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/gstreamer versioning=loose
 ARG         GSTREAMER_VERSION="1.26.3-r0"
-# renovate: datasource=repology depName=alpine_3_22/git versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/git versioning=loose
 ARG         GIT_VERSION="2.49.1-r0"
-# renovate: datasource=repology depName=alpine_3_22/build-base versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/build-base versioning=loose
 ARG         BUILD_BASE_VERSION="0.5-r3"
-# renovate: datasource=repology depName=alpine_3_22/cairo-dev versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/cairo-dev versioning=loose
 ARG         CAIRO_VERSION="1.18.4-r0"
-# renovate: datasource=repology depName=alpine_3_22/cmake versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/cmake versioning=loose
 ARG         CMAKE_VERSION="3.31.7-r1"
-# renovate: datasource=repology depName=alpine_3_22/libffi-dev versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/libffi-dev versioning=loose
 ARG         LIBFFI_VERSION="3.4.8-r0"
-# renovate: datasource=repology depName=alpine_3_22/libretls-dev versioning=loose
+# renovate: datasource=repology depName=alpine_3_23/libretls-dev versioning=loose
 ARG         LIBRETLS_VERSION="3.7.0-r2"
 
 ARG         TARGETPLATFORM
