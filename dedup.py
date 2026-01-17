@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import gc
 import logging
 import os
 from time import sleep
@@ -31,6 +32,7 @@ def _recursive_path_walk(path):
 
 def _audioprint_resampled(file_path):
     raw_pcm_data, sr = audioprint.read_audio_file(file_path)
+    gc.collect() # workaround for GStreamer-CRITICAL: gst_poll_get_read_gpollfd: assertion 'set != NULL' failed
     if sr != 44100:
         # workaround for different hashes for different sample rates
         raw_pcm_data = librosa.resample(raw_pcm_data, orig_sr=sr, target_sr=44100)
