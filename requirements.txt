@@ -7,3 +7,4 @@ pydantic==2.12.5
 uvicorn==0.40.0
 pygobject==3.54.5
 audioprint@git+https://github.com/JuniorJPDJ/audioprint@pyproject
+puremagic==1.30
