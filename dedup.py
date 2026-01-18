@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import multiprocessing
 import os
 from time import sleep
 
@@ -38,7 +39,7 @@ def _audioprint_resampled(file_path):
     return audioprint.audio_phash(raw_pcm_data, 44100)
 
 
-def process_path(path, session):
+def process_path(path, session, multiprocess_pool):
     logger.info(f"Processing path: {path}")
 
     for file in _recursive_path_walk(path):
@@ -58,7 +59,7 @@ def process_path(path, session):
             logger.info(f"Skipping file in unsupported format: {file}")
             continue
 
-        fp = _audioprint_resampled(file)
+        fp = multiprocess_pool.apply(_audioprint_resampled, (file,))
 
         # Check if the same track already exists
         existing = session.query(Track).filter_by(
@@ -98,48 +99,50 @@ def main():
     session = sessionmaker(bind=engine)()
     logger.info("Database initialized")
 
-    if args.directory:
-        process_path(args.directory, session)
-        return
+    ctx = multiprocessing.get_context("spawn")
+    with ctx.Pool(processes=1, maxtasksperchild=50) as multiprocess_pool:
+        if args.directory:
+            process_path(args.directory, session, multiprocess_pool)
+            return
 
-    while True:
-        try:
-            job: Queue | None = session.query(Queue).filter_by(status=JobStatus.PENDING).order_by(
-                Queue.created_at).first()
-
-            if job is None:
-                sleep(1)
-                continue
-
-            logger.info(f"Picking job with queue_id: {job.id}")
-            # Only try to set to PROCESSING if it's still PENDING to avoid race conditions in multiple workers setups
-            updated_count = session.query(Queue).filter(
-                Queue.id == job.id,
-                Queue.status == JobStatus.PENDING
-            ).update({
-                "status": JobStatus.PROCESSING,
-                "updated_at": func.now()
-            })
-            session.commit()
-            if updated_count == 0:
-                logger.info(f"Job {job.id} picked by another worker, skipping")
-                continue
-
-            session.refresh(job)
-
-            logger.info(f"Starting processing of job with queue_id: {job.id}")
-
+        while True:
             try:
-                process_path(job.path, session)
-            except Exception as e:
-                job.update_status(JobStatus.FAILED, session)
-                logger.exception("Job failed")
-                continue
+                job: Queue | None = session.query(Queue).filter_by(status=JobStatus.PENDING).order_by(
+                    Queue.created_at).first()
 
-            job.update_status(JobStatus.DONE, session)
-            logger.info("Job done")
-        except KeyboardInterrupt:
-            break
+                if job is None:
+                    sleep(1)
+                    continue
+
+                logger.info(f"Picking job with queue_id: {job.id}")
+                # Only try to set to PROCESSING if it's still PENDING to avoid race conditions in multiple workers setups
+                updated_count = session.query(Queue).filter(
+                    Queue.id == job.id,
+                    Queue.status == JobStatus.PENDING
+                ).update({
+                    "status": JobStatus.PROCESSING,
+                    "updated_at": func.now()
+                })
+                session.commit()
+                if updated_count == 0:
+                    logger.info(f"Job {job.id} picked by another worker, skipping")
+                    continue
+
+                session.refresh(job)
+
+                logger.info(f"Starting processing of job with queue_id: {job.id}")
+
+                try:
+                    process_path(job.path, session, multiprocess_pool)
+                except Exception as e:
+                    job.update_status(JobStatus.FAILED, session)
+                    logger.exception("Job failed")
+                    continue
+
+                job.update_status(JobStatus.DONE, session)
+                logger.info("Job done")
+            except KeyboardInterrupt:
+                break
 
 
 if __name__ == "__main__":
