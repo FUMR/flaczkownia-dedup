@@ -25,7 +25,7 @@ class Queue(SQLBase):
     updated_at = Column(DateTime, nullable=False, default=func.now())
 
     __table_args__ = (
-        Index("idx_queue_path", "path"),
+        Index("idx_queue_status_created_at", "status", "created_at"),
     )
 
     def update_status(self, status: JobStatus, session):
@@ -51,6 +51,7 @@ class Track(SQLBase):
         Index("idx_track_path", "path", unique=True),
         Index("idx_track_duplicate", "acoustic_fingerprint", "album", "mb_albumid", "disc_number", "track_number",
               unique=True, postgresql_where=duplicate == False, sqlite_where=duplicate == False),
+        Index("idx_track_fingerprint", "acoustic_fingerprint"),
     )
 
 
