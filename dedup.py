@@ -9,7 +9,7 @@ from time import sleep
 import audioprint
 import librosa
 import mediafile
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from mediafile import MediaFile
 
@@ -113,8 +113,23 @@ def main():
                 sleep(1)
                 continue
 
+            logger.info(f"Picking job with queue_id: {job.id}")
+            # Only try to set to PROCESSING if it's still PENDING to avoid race conditions in multiple workers setups
+            updated_count = session.query(Queue).filter(
+                Queue.id == job.id,
+                Queue.status == JobStatus.PENDING
+            ).update({
+                "status": JobStatus.PROCESSING,
+                "updated_at": func.now()
+            })
+            session.commit()
+            if updated_count == 0:
+                logger.info(f"Job {job.id} picked by another worker, skipping")
+                continue
+
+            session.refresh(job)
+
             logger.info(f"Starting processing of job with queue_id: {job.id}")
-            job.update_status(JobStatus.PROCESSING, session)
 
             try:
                 process_path(job.path, session)
