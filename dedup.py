@@ -9,6 +9,7 @@ from time import sleep
 import audioprint
 import librosa
 import mediafile
+import puremagic
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 from mediafile import MediaFile
@@ -48,6 +49,17 @@ def process_path(path, session, multiprocess_pool):
         # Skip already indexed
         if session.query(Track).filter_by(path=file).first() or session.query(UnknownFile).filter_by(path=file).first():
             logger.info(f"Skipping already indexed file: {file}")
+            continue
+
+        try:
+            mimes = puremagic.magic_file(file)
+            if not any(m.mime_type.startswith("audio/") for m in mimes):
+                raise ValueError("Not an audio file")
+        except (ValueError, puremagic.PureError):
+            uf = UnknownFile(path=file)
+            session.add(uf)
+            session.commit()
+            logger.info(f"Skipping file in unsupported format: {file}")
             continue
 
         try:
