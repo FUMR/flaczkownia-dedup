@@ -9,13 +9,16 @@ services:
     privileged: true
     network_mode: host
     volumes:
+      # Data directory
       - source: ./data/tgmount
         target: /app/data
         type: bind
+      # Output (mount) directory
       - source: ./data/tgmount/mnt
         target: /app/data/mnt
         type: bind
         bind:
+          # Allows tgmount to propagate mount to the host
           propagation: rshared
     environment:
       TGAPP: "${TGAPP}"
@@ -27,7 +30,7 @@ services:
       - --mount
       - ./mnt/flaczkownia
       - --new-file-webhook-url
-      - http://127.0.0.1:9999/api/v1/tgmount_webhook
+      - http://127.0.0.1:9999/api/v1/tgmount_add_to_dedup_queue
       - --fuse-options
       - allow_other
       - --id
@@ -40,16 +43,20 @@ services:
     ulimits:
       nofile: 524288
     volumes:
+      # Input directory (tgmount output)
       - source: ./data/tgmount/mnt
         target: /app/root
         read_only: true
         type: bind
         bind:
+          # Allows host mounts to propagate to the container after container start
           propagation: rslave
+      # Output (mount) directory
       - source: ./data/ziprofs/mnt
         target: /app/mnt
         type: bind
         bind:
+          # Allows ziprofs to propagate mount to the host
           propagation: rshared
     stop_signal: SIGINT
     command:
@@ -62,17 +69,22 @@ services:
     # build: .
     image: ghcr.io/fumr/flaczkownia-dedup
     restart: unless-stopped
+    deploy:
+      mode: replicated
+      # Can be scaled horizontally if the queue is large
+      replicas: 1
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
         target: /app/data
         type: bind
-      - # Dedup dir
+      - # Dedup input directory (ziprofs output)
         source: ./data/ziprofs/mnt
         target: /app/data/music
         read_only: true
         type: bind
         bind:
+          # Allows host mounts to propagate to the container after container start
           propagation: rslave
     stop_signal: SIGINT
     command:
@@ -92,6 +104,7 @@ services:
       - python
       - connector.py
     ports:
+      # Necessary for tgmount to reach webhook (tgmount is running in host network mode)
       - "127.0.0.1:9999:9999"
     command:
       - --basedir

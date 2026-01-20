@@ -45,9 +45,9 @@ app = FastAPI(
 
 
 @app.post(
-    path="/tgmount_webhook"
+    path="/tgmount_add_to_dedup_queue"
 )
-async def dedup(data: TGMountWebhook, session: Annotated[sessionmaker, Depends(get_session)]):
+async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[sessionmaker, Depends(get_session)]):
     q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
     session.add(q)
     session.commit()
