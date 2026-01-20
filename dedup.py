@@ -10,7 +10,7 @@ import audioprint
 import librosa
 import mediafile
 import puremagic
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from mediafile import MediaFile
 
@@ -127,15 +127,14 @@ def main():
                     continue
 
                 logger.info(f"Picking job with queue_id: {job.id}")
+
                 # Only try to set to PROCESSING if it's still PENDING to avoid race conditions in multiple workers setups
                 updated_count = session.query(Queue).filter(
                     Queue.id == job.id,
                     Queue.status == JobStatus.PENDING
-                ).update({
-                    "status": JobStatus.PROCESSING,
-                    "updated_at": func.now()
-                })
+                ).update({"status": JobStatus.PROCESSING})
                 session.commit()
+
                 if updated_count == 0:
                     logger.info(f"Job {job.id} picked by another worker, skipping")
                     continue
@@ -147,12 +146,14 @@ def main():
                 try:
                     process_path(job.path, session, multiprocess_pool)
                 except Exception as e:
-                    job.update_status(JobStatus.FAILED, session)
-                    logger.exception("Job failed")
+                    job.status = JobStatus.FAILED
+                    session.commit()
+                    logger.exception(f"Job {job.id} failed")
                     continue
 
-                job.update_status(JobStatus.DONE, session)
-                logger.info("Job done")
+                job.status = JobStatus.DONE
+                session.commit()
+                logger.info(f"Job {job.id} done")
             except KeyboardInterrupt:
                 break
 

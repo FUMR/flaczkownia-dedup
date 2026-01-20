@@ -22,17 +22,11 @@ class Queue(SQLBase):
     path = Column(String, nullable=False)
     status = Column(SQLEnum(JobStatus), nullable=False, default=JobStatus.PENDING)
     created_at = Column(DateTime, nullable=False, default=func.now())
-    updated_at = Column(DateTime, nullable=False, default=func.now())
+    updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
     __table_args__ = (
         Index("idx_queue_status_created_at", "status", "created_at"),
     )
-
-    def update_status(self, status: JobStatus, session):
-        self.status = status
-        self.updated_at = func.now()
-
-        session.commit()
 
 
 class Track(SQLBase):
