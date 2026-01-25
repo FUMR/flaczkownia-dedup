@@ -13,10 +13,6 @@ services:
       - source: ./data/tgmount
         target: /app/data
         type: bind
-      # Output (mount) directory
-      - source: ./data/tgmount/mnt
-        target: /app/data/mnt
-        type: bind
         bind:
           # Allows tgmount to propagate mount to the host
           propagation: rshared
@@ -90,6 +86,8 @@ services:
     command:
       - --db
       - sqlite:////app/data/dedup.sqlite3
+      - --webhook-url
+      - http://connector:9999/api/v1/dedup_processed_file_webhook
 
   connector:
     image: ghcr.io/fumr/flaczkownia-dedup
@@ -98,6 +96,10 @@ services:
       - # SQLite3 database directory
         source: ./data/dedup/
         target: /app/data
+        type: bind
+      - # Deduplicated view directory
+        source: ./data/view
+        target: /app/data/view
         type: bind
     stop_signal: SIGINT
     entrypoint:
@@ -115,3 +117,7 @@ services:
       - 0.0.0.0
       - --port
       - "9999"
+      - --view-dir
+      - /app/data/view
+      - --source-relative-path
+      - ../../ziprofs/mnt/flaczkownia
