@@ -109,8 +109,8 @@ services:
         target: /app/data
         type: bind
       - # Deduplicated view directory
-        source: ./data/view
-        target: /app/data/view
+        source: ./data/deduped
+        target: /app/data/deduped
         type: bind
     stop_signal: SIGINT
     entrypoint:
@@ -129,6 +129,8 @@ services:
       - --port
       - "9999"
       - --view-dir
-      - /app/data/view
+      - /app/data/deduped
       - --source-relative-path
-      - ../../ziprofs/mnt/flaczkownia
+      - ../ziprofs/mnt
+      - --db-prefix
+      - data/music
