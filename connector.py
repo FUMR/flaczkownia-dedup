@@ -48,7 +48,7 @@ def _create_symlink(db_path: str):
         rel_path = Path(db_path).relative_to(args.db_prefix)
         link_path = Path(args.view_dir) / rel_path
 
-        # Calculate target
+        # Calculate the target
         # link is at view_dir/rel_path
         # target is at view_dir/source_relative_path/rel_path
         # We need to go up from link_path.parent to view_dir
@@ -124,9 +124,7 @@ app = FastAPI(
 )
 
 
-@app.post(
-    path="/dedup_processed_file_webhook"
-)
+@app.post(path="/dedup_processed_file_webhook")
 async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
     if args.view_dir and args.source_relative_path:
         if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
@@ -135,9 +133,7 @@ async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
     return {"status": "ok"}
 
 
-@app.post(
-    path="/tgmount_add_to_dedup_queue"
-)
+@app.post(path="/tgmount_add_to_dedup_queue")
 async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[sessionmaker, Depends(get_session)]):
     q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
     session.add(q)

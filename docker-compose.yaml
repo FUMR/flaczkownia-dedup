@@ -8,10 +8,16 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
+    depends_on:
+      - connector
     volumes:
       # Data directory
       - source: ./data/tgmount
         target: /app/data
+        type: bind
+      # Output (mount) directory
+      - source: ./data/tgmount/mnt
+        target: /app/data/mnt
         type: bind
         bind:
           # Allows tgmount to propagate mount to the host
@@ -38,6 +44,8 @@ services:
     privileged: true
     ulimits:
       nofile: 524288
+    depends_on:
+      - tgmount
     volumes:
       # Input directory (tgmount output)
       - source: ./data/tgmount/mnt
@@ -69,6 +77,9 @@ services:
       mode: replicated
       # Can be scaled horizontally if the queue is large
       replicas: 1
+    depends_on:
+      - connector
+      - ziprofs
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/

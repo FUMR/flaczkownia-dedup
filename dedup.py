@@ -13,7 +13,6 @@ import mediafile
 import puremagic
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from mediafile import MediaFile
 
 from lib.sqlmodels import SQLBase, Track, Queue, JobStatus, UnknownFile
 
@@ -75,7 +74,7 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
             continue
 
         try:
-            mf = MediaFile(file)
+            mf = mediafile.MediaFile(file)
         except mediafile.FileTypeError:
             uf = UnknownFile(path=file)
             session.add(uf)
@@ -110,24 +109,12 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
-        type_str = "duplicate" if existing is not None else "new"
-        payload = {
+        _send_webhook(webhook_urls, {
             "path": file,
-            "type": type_str,
+            "type": "duplicate" if existing is not None else "new",
             "audioprint": str(fp),
-            "metadata": None
-        }
-        try:
-             payload["metadata"] = {
-                 "album": mf.album,
-                 "title": mf.title,
-                 "artist": mf.artist,
-                 "year": mf.year
-             }
-        except:
-             pass
-
-        _send_webhook(webhook_urls, payload)
+            "metadata": {k: v for k, v in mf.as_dict().items() if k not in ("art", "images") and v is not None}
+        })
 
 
 def main():
@@ -178,7 +165,7 @@ def main():
 
                 try:
                     process_path(job.path, session, multiprocess_pool, args.webhook_url)
-                except Exception as e:
+                except Exception:
                     job.status = JobStatus.FAILED
                     session.commit()
                     logger.exception(f"Job {job.id} failed")
