@@ -135,7 +135,7 @@ def _cleanup_stale_symlinks(view_dir: str, db_prefix: str):
 
 
 def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: str):
-    logger.info("Starting symlink verification...")
+    logger.info("Starting symlink creation and validation...")
     try:
         with sessionmaker(bind=engine)() as session:
             # Process Tracks
@@ -147,7 +147,7 @@ def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: 
                 _create_symlink(path, db_prefix, view_dir, source_relative_path)
 
     except Exception:
-        logger.exception("Error during symlink verification")
+        logger.exception("Error during symlink creation and validation")
 
 
 @asynccontextmanager
