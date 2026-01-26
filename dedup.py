@@ -40,7 +40,7 @@ def _audioprint_resampled(file_path):
     return audioprint.audio_phash(raw_pcm_data, 44100)
 
 
-def _send_webhook(urls, payload):
+def _send_processed_file_webhook(urls, payload):
     if not urls:
         return
     for url in urls:
@@ -70,7 +70,7 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
             session.add(uf)
             session.commit()
             logger.info(f"Skipping file in unsupported format: {file}")
-            _send_webhook(webhook_urls, {"path": file, "type": "unknown"})
+            _send_processed_file_webhook(webhook_urls, {"path": file, "type": "unknown"})
             continue
 
         try:
@@ -80,7 +80,7 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
             session.add(uf)
             session.commit()
             logger.info(f"Skipping file in unsupported format: {file}")
-            _send_webhook(webhook_urls, {"path": file, "type": "unknown"})
+            _send_processed_file_webhook(webhook_urls, {"path": file, "type": "unknown"})
             continue
 
         fp = multiprocess_pool.apply(_audioprint_resampled, (file,))
@@ -109,9 +109,9 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
 
         logger.info(f"Processed file: {file}, duplicate={existing is not None}")
 
-        _send_webhook(webhook_urls, {
+        _send_processed_file_webhook(webhook_urls, {
             "path": file,
-            "type": "duplicate" if existing is not None else "new",
+            "type": "new" if existing is None else "duplicate",
             "audioprint": str(fp),
             "metadata": {k: v for k, v in mf.as_dict().items() if k not in ("art", "images") and v is not None}
         })
