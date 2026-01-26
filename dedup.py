@@ -4,6 +4,7 @@ import argparse
 import logging
 import multiprocessing
 import os
+from datetime import date, datetime
 from time import sleep
 
 import audioprint
@@ -113,7 +114,10 @@ def process_path(path, session, multiprocess_pool, webhook_urls=None):
             "path": file,
             "type": "new" if existing is None else "duplicate",
             "audioprint": str(fp),
-            "metadata": {k: v for k, v in mf.as_dict().items() if k not in ("art", "images") and v is not None}
+            "metadata": {
+                k: (v.isoformat() if isinstance(v, (date, datetime)) else v) for k, v in mf.as_dict().items()
+                         if k not in ("art", "images") and v is not None
+            }
         })
 
 

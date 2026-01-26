@@ -70,7 +70,7 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
 
         link_path.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(target, link_path)
-        logger.debug(f"Created symlink: {link_path} -> {target}")
+        logger.info(f"Created symlink: {link_path} -> {target}")
 
     except Exception as e:
         logger.error(f"Failed to create symlink for {db_path}: {e}")
@@ -176,6 +176,7 @@ app = FastAPI(
 
 @app.post(path="/dedup_processed_file_webhook")
 async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
+    logger.info(f"Got dedup processed file webhook: {data}")
     if args.view_dir:
         if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
             _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)
@@ -188,6 +189,7 @@ async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Se
     q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
     session.add(q)
     session.commit()
+    logger.info(f"Added file to queue: {q.path}")
 
     return {"queue_id": q.id}
 
