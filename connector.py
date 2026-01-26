@@ -11,7 +11,7 @@ from typing import Annotated
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 import uvicorn
 
 from lib.sqlmodels import SQLBase, Queue, Track, UnknownFile
@@ -19,6 +19,7 @@ from lib.sqlmodels import SQLBase, Queue, Track, UnknownFile
 
 class TGMountWebhook(BaseModel):
     fname: str
+    # Other fields are not important for us here
 
 
 class DedupFileStatus(str, Enum):
@@ -75,34 +76,78 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
         logger.error(f"Failed to create symlink for {db_path}: {e}")
 
 
-def _reconcile_view(view_dir: str, db_prefix: str, source_relative_path: str):
-    logger.info("Starting view reconciliation...")
+def _process_cleanup_batch(session, batch_files):
+    logger.info(f"Starting stale symlinks cleanup - batch of {len(batch_files)} links...")
+    # batch_files is a list of (full_path, db_path)
+    db_paths = [b[1] for b in batch_files]
+
+    valid_tracks = session.query(Track.path).filter(Track.path.in_(db_paths), Track.duplicate == False).all()
+    valid_unknown = session.query(UnknownFile.path).filter(UnknownFile.path.in_(db_paths)).all()
+
+    valid_db_paths = set(p[0] for p in valid_tracks + valid_unknown)
+
+    for full_path, db_path in batch_files:
+        if db_path not in valid_db_paths:
+            logger.info(f"Removing stale file/link: {full_path}")
+            try:
+                os.unlink(full_path)
+            except OSError as e:
+                logger.error(f"Failed to remove {full_path}: {e}")
+
+
+def _cleanup_stale_symlinks(view_dir: str, db_prefix: str):
+    logger.info("Starting stale symlinks cleanup...")
+    batch_size = 1000
+    batch_files = []  # list of (full_path, db_path)
+
     try:
+        # Pass 1: Remove stale files
         with sessionmaker(bind=engine)() as session:
-            tracks = session.query(Track.path).filter_by(duplicate=False).all()
-            unknown = session.query(UnknownFile.path).all()
+            for root, dirs, files in os.walk(view_dir, topdown=False):
+                for name in files:
+                    full_path = os.path.join(root, name)
+                    try:
+                        rel_path = Path(full_path).relative_to(view_dir)
+                        # Reconstruct db_path
+                        db_path = str(Path(db_prefix) / rel_path)
+                        batch_files.append((full_path, db_path))
+                    except ValueError:
+                        continue
 
-        valid_paths = set()
-        for (path,) in tracks + unknown:
-            _create_symlink(path, db_prefix, view_dir, source_relative_path)
-            if path.startswith(db_prefix):
-                 valid_paths.add(str(Path(view_dir) / Path(path).relative_to(db_prefix)))
+                    if len(batch_files) >= batch_size:
+                        _process_cleanup_batch(session, batch_files)
+                        batch_files = []
 
-        # Cleanup stale
+            # Process remaining
+            if batch_files:
+                _process_cleanup_batch(session, batch_files)
+        
+        # Pass 2: Clean empty directories
         for root, dirs, files in os.walk(view_dir, topdown=False):
-             for name in files:
-                 full_path = str(Path(root) / name)
-                 if full_path not in valid_paths:
-                     logger.info(f"Removing stale file/link: {full_path}")
-                     os.unlink(full_path)
-             for name in dirs:
-                 try:
+            for name in dirs:
+                try:
                     os.rmdir(os.path.join(root, name))
-                 except OSError:
-                    pass # Not empty
+                except OSError:
+                    pass  # Not empty
 
     except Exception:
-        logger.exception("Error during view reconciliation")
+        logger.exception("Error during stale file cleanup")
+
+
+def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: str):
+    logger.info("Starting symlink verification...")
+    try:
+        with sessionmaker(bind=engine)() as session:
+            # Process Tracks
+            for (path,) in session.query(Track.path).filter_by(duplicate=False).yield_per(1000):
+                _create_symlink(path, db_prefix, view_dir, source_relative_path)
+
+            # Process UnknownFiles
+            for (path,) in session.query(UnknownFile.path).yield_per(1000):
+                _create_symlink(path, db_prefix, view_dir, source_relative_path)
+
+    except Exception:
+        logger.exception("Error during symlink verification")
 
 
 @asynccontextmanager
@@ -113,7 +158,8 @@ async def lifespan(app: FastAPI):
     logger.info(f"Database initialized")
 
     if args.view_dir:
-        _reconcile_view(args.view_dir, args.db_prefix, args.source_relative_path)
+        _cleanup_stale_symlinks(args.view_dir, args.db_prefix)
+        _ensure_valid_symlinks(args.view_dir, args.db_prefix, args.source_relative_path)
 
     yield
 
@@ -138,7 +184,7 @@ async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
 
 
 @app.post(path="/tgmount_add_to_dedup_queue")
-async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[sessionmaker, Depends(get_session)]):
+async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Session, Depends(get_session)]):
     q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
     session.add(q)
     session.commit()
