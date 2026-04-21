@@ -4,7 +4,7 @@ psycopg2-binary==2.9.12
 fastapi==0.136.0
 httpx==0.28.1
 pydantic==2.13.3
-uvicorn==0.44.0
+uvicorn==0.45.0
 pygobject==3.56.2
 audioprint@git+https://github.com/JuniorJPDJ/audioprint@pyproject
 puremagic==2.2.0
