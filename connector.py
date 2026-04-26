@@ -176,7 +176,7 @@ app = FastAPI(
 
 @app.post(path="/dedup_processed_file_webhook")
 async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
-    logger.info(f"Got dedup processed file webhook: {data}")
+    logger.debug(f"Got dedup processed file webhook: {data}")
     if args.view_dir:
         if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
             _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)

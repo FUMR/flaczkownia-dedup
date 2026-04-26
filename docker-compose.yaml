@@ -1,5 +1,5 @@
-# mkdir -p ./data/tgmount/mnt/flaczkownia ./data/ziprofs/mnt/flaczkownia ./data/dedup
-# chown -R 65534:65534 ./data/tgmount ./data/ziprofs ./data/dedup
+# mkdir -p ./data/tgmount/mnt/flaczkownia ./data/ziprofs/mnt/flaczkownia ./data/dedup ./data/deduped
+# chown -R 65534:65534 ./data/tgmount ./data/ziprofs ./data/dedup ./data/deduped
 # docker compose run tgmount --list-dialogs --ipv6
 
 services:
