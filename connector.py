@@ -62,7 +62,7 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
             if current_target == target:
                 return
             else:
-                logger.info(f"Updating symlink {link_path}: {current_target} -> {target}")
+                logger.debug(f"Updating symlink {link_path}: {current_target} -> {target}")
                 link_path.unlink()
         elif link_path.exists():
              logger.warning(f"Path {link_path} exists and is not a symlink, skipping")
@@ -70,7 +70,7 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
 
         link_path.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(target, link_path)
-        logger.info(f"Created symlink: {link_path} -> {target}")
+        logger.debug(f"Created symlink: {link_path} -> {target}")
 
     except Exception as e:
         logger.error(f"Failed to create symlink for {db_path}: {e}")
@@ -88,7 +88,7 @@ def _process_cleanup_batch(session, batch_files):
 
     for full_path, db_path in batch_files:
         if db_path not in valid_db_paths:
-            logger.info(f"Removing stale file/link: {full_path}")
+            logger.debug(f"Removing stale file/link: {full_path}")
             try:
                 os.unlink(full_path)
             except OSError as e:
