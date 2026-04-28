@@ -11,6 +11,7 @@ if __name__ == "__main__":
     parser.add_argument("directory", help="Path to the directory containing files")
     parser.add_argument("url", help="URL to send POST requests to")
     parser.add_argument("--min-msgid", type=int, default=0, help="Message ID to start with")
+    parser.add_argument("--max-msgid", type=int, default=0, help="Message ID to end with")
     args = parser.parse_args()
 
     if not os.path.isdir(args.directory):
@@ -21,7 +22,7 @@ if __name__ == "__main__":
 
     for fname in os.listdir(args.directory):
         msg_id = int(fname.split(" ", 1)[0])
-        if msg_id > args.min_msgid:
+        if msg_id >= args.min_msgid and (args.max_msgid == 0 or msg_id <= args.max_msgid):
             files[msg_id] = fname
 
     with httpx.Client() as httpx_client:
