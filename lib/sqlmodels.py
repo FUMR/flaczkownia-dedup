@@ -58,3 +58,21 @@ class UnknownFile(SQLBase):
     __table_args__ = (
         Index("idx_unknown_file_path", "path", unique=True),
     )
+
+
+class CopyQueue(SQLBase):
+    __tablename__ = "copy_queue"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_path = Column(String, unique=True, nullable=False)
+    destination_path = Column(String, nullable=False)
+    status = Column(SQLEnum(JobStatus), nullable=False, default=JobStatus.PENDING)
+    attempts = Column(Integer, nullable=False, default=0)
+    last_error = Column(String)
+    created_at = Column(DateTime, nullable=False, default=func.now())
+    updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_copy_queue_source_path", "source_path", unique=True),
+        Index("idx_copy_queue_status_created_at", "status", "created_at"),
+    )
