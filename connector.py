@@ -3,6 +3,8 @@
 import argparse
 import logging
 import os
+import shutil
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from enum import Enum
 from pathlib import Path
@@ -15,6 +17,8 @@ from sqlalchemy.orm import sessionmaker, Session
 import uvicorn
 
 from lib.sqlmodels import SQLBase, Queue, Track, UnknownFile
+
+executor: ThreadPoolExecutor | None = None
 
 
 class TGMountWebhook(BaseModel):
@@ -76,9 +80,35 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
         logger.error(f"Failed to create symlink for {db_path}: {e}")
 
 
+def _copy_file(db_path: str, db_prefix: str, view_dir: str, source_path: str):
+    try:
+        if not db_path.startswith(db_prefix):
+            logger.warning(f"Path {db_path} does not start with {db_prefix}, skipping")
+            return
+
+        rel_path = Path(db_path).relative_to(db_prefix)
+        src_file = Path(source_path) / rel_path
+        dst_file = Path(view_dir) / rel_path
+
+        if dst_file.exists() and not dst_file.is_symlink():
+            src_stat = os.stat(src_file)
+            dst_stat = os.stat(dst_file)
+            if src_stat.st_size == dst_stat.st_size and src_stat.st_mtime == dst_stat.st_mtime:
+                logger.debug(f"Copy up to date: {dst_file} (size/mtime equals)")
+                return
+            logger.debug(f"Updating copy: {dst_file} (size/mtime differs)")
+            dst_file.unlink()
+
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src_file, dst_file)
+        logger.debug(f"Copied: {src_file} -> {dst_file}")
+
+    except Exception as e:
+        logger.error(f"Failed to copy {db_path}: {e}")
+
+
 def _process_cleanup_batch(session, batch_files):
-    logger.info(f"Starting stale symlinks cleanup - batch of {len(batch_files)} links...")
-    # batch_files is a list of (full_path, db_path)
+    logger.info(f"Starting stale files cleanup - batch of {len(batch_files)} files...")
     db_paths = [b[1] for b in batch_files]
 
     valid_tracks = session.query(Track.path).filter(Track.path.in_(db_paths), Track.duplicate == False).all()
@@ -95,8 +125,8 @@ def _process_cleanup_batch(session, batch_files):
                 logger.error(f"Failed to remove {full_path}: {e}")
 
 
-def _cleanup_stale_symlinks(view_dir: str, db_prefix: str):
-    logger.info("Starting stale symlinks cleanup...")
+def _cleanup_stale_files(view_dir: str, db_prefix: str):
+    logger.info("Starting stale files cleanup...")
     batch_size = 1000
     batch_files = []  # list of (full_path, db_path)
 
@@ -150,20 +180,42 @@ def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: 
         logger.exception("Error during symlink creation and validation")
 
 
+def _ensure_valid_copies(view_dir: str, db_prefix: str, source_path: str):
+    logger.info("Starting copy reconciliation...")
+    try:
+        with sessionmaker(bind=engine)() as session:
+            for (path,) in session.query(Track.path).filter_by(duplicate=False).yield_per(1000):
+                _copy_file(path, db_prefix, view_dir, source_path)
+
+            for (path,) in session.query(UnknownFile.path).yield_per(1000):
+                _copy_file(path, db_prefix, view_dir, source_path)
+
+    except Exception:
+        logger.exception("Error during copy reconciliation")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global executor
+
     # Startup logic
-    logger.info(f"Initializing database")
+    logger.info("Initializing database")
     SQLBase.metadata.create_all(engine)
-    logger.info(f"Database initialized")
+    logger.info("Database initialized")
+
+    executor = ThreadPoolExecutor(max_workers=1)
 
     if args.view_mode == "symlink":
-        _cleanup_stale_symlinks(args.view_dir, args.db_prefix)
-        _ensure_valid_symlinks(args.view_dir, args.db_prefix, args.source_relative_path)
+        executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix)
+        executor.submit(_ensure_valid_symlinks, args.view_dir, args.db_prefix, args.source_relative_path)
+    elif args.view_mode == "copy":
+        executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix)
+        executor.submit(_ensure_valid_copies, args.view_dir, args.db_prefix, args.source_path)
 
     yield
 
     # Shutdown logic
+    executor.shutdown(wait=False)
     engine.dispose()
 
 
@@ -179,7 +231,9 @@ async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
     logger.debug(f"Got dedup processed file webhook: {data}")
     if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
         if args.view_mode == "symlink":
-            _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)
+            executor.submit(_create_symlink, data.path, args.db_prefix, args.view_dir, args.source_relative_path)
+        elif args.view_mode == "copy":
+            executor.submit(_copy_file, data.path, args.db_prefix, args.view_dir, args.source_path)
 
     return {"status": "ok"}
 
@@ -220,8 +274,8 @@ if __name__ == "__main__":
         if None in (args.view_dir, args.db_prefix, args.source_relative_path):
             parser.error("--view-mode symlink: requires --view-dir, --db-prefix and --source-relative-path.")
     elif args.view_mode == "copy":
-        if None in (args.view_dir, args.source_path):
-            parser.error("--view-mode copy: requires --view-dir and --source-path.")
+        if None in (args.view_dir, args.db_prefix, args.source_path):
+            parser.error("--view-mode copy: requires --view-dir, --db-prefix and --source-path.")
 
     engine = create_engine(args.db, echo=False)
 
