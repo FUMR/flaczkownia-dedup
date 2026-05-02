@@ -47,14 +47,26 @@ def get_session():
         yield session
 
 
+def _resolve_destination_path(path: str, prefix: str, destination_dir: str) -> Path | None:
+    source = Path(path)
+    source_prefix = Path(prefix)
+
+    try:
+        relative_path = source.relative_to(source_prefix)
+    except ValueError:
+        logger.warning(f"Path {path} does not start with prefix {prefix}, skipping")
+        return None
+
+    return Path(destination_dir) / relative_path
+
+
 def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative_path: str):
     try:
-        if not db_path.startswith(db_prefix):
-            logger.warning(f"Path {db_path} does not start with {db_prefix}, skipping")
+        link_path = _resolve_destination_path(db_path, db_prefix, view_dir)
+        if link_path is None:
             return
 
-        rel_path = Path(db_path).relative_to(db_prefix)
-        link_path = Path(view_dir) / rel_path
+        rel_path = link_path.relative_to(view_dir)
 
         # Calculate the target
         # link is at view_dir/rel_path
@@ -155,19 +167,6 @@ def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: 
 
     except Exception:
         logger.exception("Error during symlink creation and validation")
-
-
-def _resolve_destination_path(source_path: str, source_prefix: str, destination_dir: str) -> Path | None:
-    source = Path(source_path)
-    prefix = Path(source_prefix)
-
-    try:
-        relative_path = source.relative_to(prefix)
-    except ValueError:
-        logger.warning(f"Source path {source_path} does not start with source prefix {source_prefix}, skipping")
-        return None
-
-    return Path(destination_dir) / relative_path
 
 
 def _enqueue_copy_job(session: Session, source_path: str, destination_path: Path):
