@@ -201,7 +201,7 @@ def _enqueue_copy_job(session: Session, source_path: str, destination_path: Path
 
 
 def _enqueue_copy_if_missing(session: Session, source_path: str):
-    destination_path = _resolve_destination_path(source_path, args.source_prefix, args.view_dir)
+    destination_path = _resolve_destination_path(source_path, args.basedir, args.view_dir)
     if destination_path is None:
         return
 
@@ -382,7 +382,7 @@ async def dedup_processed_file_webhook(
         _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)
 
     if args.output_mode == OutputMode.COPY:
-        destination_path = _resolve_destination_path(data.path, args.source_prefix, args.view_dir)
+        destination_path = _resolve_destination_path(data.path, args.basedir, args.view_dir)
         if destination_path is not None and not destination_path.exists():
             _enqueue_copy_job(session, data.path, destination_path)
 
@@ -401,12 +401,12 @@ async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Se
 
 def _validate_args(parser: argparse.ArgumentParser, parsed_args: argparse.Namespace):
     symlink_args = (parsed_args.view_dir, parsed_args.source_relative_path, parsed_args.db_prefix)
-    copy_args = (parsed_args.view_dir, parsed_args.source_prefix)
+    copy_args = (parsed_args.view_dir, parsed_args.basedir)
 
     if parsed_args.output_mode is None:
-        if any(symlink_args) or parsed_args.source_prefix or parsed_args.backfill_on_startup:
+        if any(symlink_args) or parsed_args.backfill_on_startup:
             parser.error(
-                "--view-dir, --source-relative-path, --db-prefix, --source-prefix "
+                "--view-dir, --source-relative-path, --db-prefix "
                 "and --backfill-on-startup require --output-mode."
             )
         return
@@ -417,7 +417,7 @@ def _validate_args(parser: argparse.ArgumentParser, parsed_args: argparse.Namesp
 
     if parsed_args.output_mode == OutputMode.COPY:
         if not all(copy_args):
-            parser.error("--output-mode copy requires --view-dir and --source-prefix.")
+            parser.error("--output-mode copy requires --view-dir and --basedir")
 
 
 if __name__ == "__main__":
@@ -439,11 +439,10 @@ if __name__ == "__main__":
         help="How accepted dedup files should be exposed. If omitted, connector only handles queue ingestion.",
     )
 
-    parser.add_argument("--view-dir", help="Directory to create symlink view in")
+    parser.add_argument("--view-dir", help="Directory to expose accepted files in")
     parser.add_argument("--source-relative-path", help="Relative path from view-dir to source root")
     parser.add_argument("--db-prefix", help="Prefix to strip from DB paths for symlink mode")
 
-    parser.add_argument("--source-prefix", help="Source path prefix to strip from dedup paths for copy mode")
     parser.add_argument(
         "--backfill-on-startup",
         action="store_true",
