@@ -79,7 +79,6 @@ services:
       replicas: 1
     depends_on:
       - connector
-      - copier
       - ziprofs
     volumes:
       - # SQLite3 database directory
@@ -100,18 +99,26 @@ services:
       - sqlite:////app/data/dedup.sqlite3
       - --webhook-url
       - http://connector:9999/api/v1/dedup_processed_file_webhook
-      - --webhook-url
-      - http://copier:9998/api/v1/dedup_processed_file_webhook
 
   connector:
     image: ghcr.io/fumr/flaczkownia-dedup
     restart: unless-stopped
+#    depends_on:
+#      - ziprofs # needed for copy mode
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
         target: /app/data
         type: bind
-      - # Deduplicated view directory
+#      - # Source directory, same logical tree as dedup sees. Required for copy mode.
+#        source: ./data/ziprofs/mnt
+#        target: /app/data/music
+#        read_only: true
+#        type: bind
+#        bind:
+#          # Allows host mounts to propagate to the container after container start
+#          propagation: rslave
+      - # Deduplicated symlink view directory
         source: ./data/deduped
         target: /app/data/deduped
         type: bind
@@ -131,48 +138,19 @@ services:
       - 0.0.0.0
       - --port
       - "9999"
+      - --output-mode
+      - symlink
       - --view-dir
       - /app/data/deduped
       - --source-relative-path
       - ../ziprofs/mnt
       - --db-prefix
       - data/music
-
-  copier:
-    image: ghcr.io/fumr/flaczkownia-dedup
-    restart: unless-stopped
-    depends_on:
-      - ziprofs
-    volumes:
-      - # SQLite3 database directory
-        source: ./data/dedup/
-        target: /app/data
-        type: bind
-      - # Source directory, same logical tree as dedup sees
-        source: ./data/ziprofs/mnt
-        target: /app/data/music
-        read_only: true
-        type: bind
-        bind:
-          # Allows host mounts to propagate to the container after container start
-          propagation: rslave
-      - # Copied deduplicated output directory
-        source: ./data/copied
-        target: /app/data/copied
-        type: bind
-    stop_signal: SIGINT
-    entrypoint:
-      - python
-      - copier.py
-    command:
-      - --db
-      - sqlite:////app/data/dedup.sqlite3
-      - --host
-      - 0.0.0.0
-      - --port
-      - "9998"
-      - --source-prefix
-      - /app/data/music
-      - --destination-dir
-      - /app/data/copied
-      - --backfill-on-startup
+      # Copy mode example:
+      # - --output-mode
+      # - copy
+      # - --source-prefix
+      # - /app/data/music
+      # - --destination-dir
+      # - /app/data/deduped
+      # - --backfill-on-startup
