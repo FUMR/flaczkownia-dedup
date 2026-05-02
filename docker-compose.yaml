@@ -1,5 +1,5 @@
-# mkdir -p ./data/tgmount/mnt/flaczkownia ./data/ziprofs/mnt/flaczkownia ./data/dedup ./data/deduped ./data/copied
-# chown -R 65534:65534 ./data/tgmount ./data/ziprofs ./data/dedup ./data/deduped ./data/copied
+# mkdir -p ./data/tgmount/mnt/flaczkownia ./data/ziprofs/mnt/flaczkownia ./data/dedup ./data/deduped
+# chown -R 65534:65534 ./data/tgmount ./data/ziprofs ./data/dedup ./data/deduped
 # docker compose run tgmount --list-dialogs --ipv6
 
 services:
@@ -151,6 +151,6 @@ services:
       # - copy
       # - --source-prefix
       # - /app/data/music
-      # - --destination-dir
+      # - --view-dir
       # - /app/data/deduped
       # - --backfill-on-startup

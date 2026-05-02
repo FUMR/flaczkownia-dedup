@@ -201,7 +201,7 @@ def _enqueue_copy_job(session: Session, source_path: str, destination_path: Path
 
 
 def _enqueue_copy_if_missing(session: Session, source_path: str):
-    destination_path = _resolve_destination_path(source_path, args.source_prefix, args.destination_dir)
+    destination_path = _resolve_destination_path(source_path, args.source_prefix, args.view_dir)
     if destination_path is None:
         return
 
@@ -339,7 +339,7 @@ async def lifespan(app: FastAPI):
         _ensure_valid_symlinks(args.view_dir, args.db_prefix, args.source_relative_path)
 
     if args.output_mode == OutputMode.COPY:
-        Path(args.destination_dir).mkdir(parents=True, exist_ok=True)
+        Path(args.view_dir).mkdir(parents=True, exist_ok=True)
 
         await asyncio.to_thread(_recover_processing_copy_jobs)
         if args.backfill_on_startup:
@@ -382,7 +382,7 @@ async def dedup_processed_file_webhook(
         _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)
 
     if args.output_mode == OutputMode.COPY:
-        destination_path = _resolve_destination_path(data.path, args.source_prefix, args.destination_dir)
+        destination_path = _resolve_destination_path(data.path, args.source_prefix, args.view_dir)
         if destination_path is not None and not destination_path.exists():
             _enqueue_copy_job(session, data.path, destination_path)
 
@@ -401,13 +401,13 @@ async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Se
 
 def _validate_args(parser: argparse.ArgumentParser, parsed_args: argparse.Namespace):
     symlink_args = (parsed_args.view_dir, parsed_args.source_relative_path, parsed_args.db_prefix)
-    copy_args = (parsed_args.source_prefix, parsed_args.destination_dir)
+    copy_args = (parsed_args.view_dir, parsed_args.source_prefix)
 
     if parsed_args.output_mode is None:
-        if any(symlink_args) or any(copy_args) or parsed_args.backfill_on_startup:
+        if any(symlink_args) or parsed_args.source_prefix or parsed_args.backfill_on_startup:
             parser.error(
-                "--view-dir, --source-relative-path, --db-prefix, --source-prefix, "
-                "--destination-dir and --backfill-on-startup require --output-mode."
+                "--view-dir, --source-relative-path, --db-prefix, --source-prefix "
+                "and --backfill-on-startup require --output-mode."
             )
         return
 
@@ -417,7 +417,7 @@ def _validate_args(parser: argparse.ArgumentParser, parsed_args: argparse.Namesp
 
     if parsed_args.output_mode == OutputMode.COPY:
         if not all(copy_args):
-            parser.error("--output-mode copy requires --source-prefix and --destination-dir.")
+            parser.error("--output-mode copy requires --view-dir and --source-prefix.")
 
 
 if __name__ == "__main__":
@@ -444,7 +444,6 @@ if __name__ == "__main__":
     parser.add_argument("--db-prefix", help="Prefix to strip from DB paths for symlink mode")
 
     parser.add_argument("--source-prefix", help="Source path prefix to strip from dedup paths for copy mode")
-    parser.add_argument("--destination-dir", help="Directory to copy accepted files into")
     parser.add_argument(
         "--backfill-on-startup",
         action="store_true",
