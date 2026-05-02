@@ -157,7 +157,7 @@ async def lifespan(app: FastAPI):
     SQLBase.metadata.create_all(engine)
     logger.info(f"Database initialized")
 
-    if args.view_dir:
+    if args.view_mode == "symlink":
         _cleanup_stale_symlinks(args.view_dir, args.db_prefix)
         _ensure_valid_symlinks(args.view_dir, args.db_prefix, args.source_relative_path)
 
@@ -177,8 +177,8 @@ app = FastAPI(
 @app.post(path="/dedup_processed_file_webhook")
 async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
     logger.debug(f"Got dedup processed file webhook: {data}")
-    if args.view_dir:
-        if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
+    if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
+        if args.view_mode == "symlink":
             _create_symlink(data.path, args.db_prefix, args.view_dir, args.source_relative_path)
 
     return {"status": "ok"}
@@ -205,14 +205,23 @@ if __name__ == "__main__":
                         help="Path prepended to jobs added to queue from webhook")
     parser.add_argument("--host", default="0.0.0.0", help="Address to listen on")
     parser.add_argument("--port", default=8000, type=int, help="Port to listen on")
-    parser.add_argument("--view-dir", help="Directory to create symlink view in")
-    parser.add_argument("--source-relative-path", help="Relative path from view-dir to source root")
-    parser.add_argument("--db-prefix", help="Prefix to strip from DB paths")
+
+    parser.add_argument("--view-mode", type=str.lower, choices=["symlink", "copy"],
+                        help="Mode of deduplicated view")
+    parser.add_argument("--view-dir", help="Directory to create view in")
+    parser.add_argument("--db-prefix", help="Prefix to strip from DB paths before symlinking")
+    parser.add_argument("--source-relative-path",
+                        help="Relative path from view-dir to source root (symlink target)")
+    parser.add_argument("--source-path", help="Path where original files are stored (copy source)",)
 
     args = parser.parse_args()
 
-    if args.view_dir and (args.source_relative_path is None or args.db_prefix is None):
-        parser.error("--view-dir requires --source-relative-path and --db-prefix.")
+    if args.view_mode == "symlink":
+        if None in (args.view_dir, args.db_prefix, args.source_relative_path):
+            parser.error("--view-mode symlink: requires --view-dir, --db-prefix and --source-relative-path.")
+    elif args.view_mode == "copy":
+        if None in (args.view_dir, args.source_path):
+            parser.error("--view-mode copy: requires --view-dir and --source-path.")
 
     engine = create_engine(args.db, echo=False)
 
