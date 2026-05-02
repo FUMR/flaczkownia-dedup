@@ -399,27 +399,6 @@ async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Se
     return {"queue_id": q.id}
 
 
-def _validate_args(parser: argparse.ArgumentParser, parsed_args: argparse.Namespace):
-    symlink_args = (parsed_args.view_dir, parsed_args.source_relative_path, parsed_args.db_prefix)
-    copy_args = (parsed_args.view_dir, parsed_args.basedir)
-
-    if parsed_args.output_mode is None:
-        if any(symlink_args) or parsed_args.backfill_on_startup:
-            parser.error(
-                "--view-dir, --source-relative-path, --db-prefix "
-                "and --backfill-on-startup require --output-mode."
-            )
-        return
-
-    if parsed_args.output_mode == OutputMode.SYMLINK:
-        if not all(symlink_args):
-            parser.error("--output-mode symlink requires --view-dir, --source-relative-path and --db-prefix.")
-
-    if parsed_args.output_mode == OutputMode.COPY:
-        if not all(copy_args):
-            parser.error("--output-mode copy requires --view-dir and --basedir")
-
-
 if __name__ == "__main__":
     logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level="INFO")
     logger = logging.getLogger(__name__)
@@ -452,7 +431,6 @@ if __name__ == "__main__":
     parser.add_argument("--max-attempts", default=10, type=int, help="Maximum copy attempts per file")
 
     args = parser.parse_args()
-    _validate_args(parser, args)
 
     engine = create_engine(args.db, echo=False)
 
