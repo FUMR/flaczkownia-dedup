@@ -138,8 +138,6 @@ services:
       - 0.0.0.0
       - --port
       - "9999"
-      - --output-mode
-      - symlink
       - --view-dir
       - /app/data/deduped
       - --source-relative-path

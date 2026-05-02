@@ -436,6 +436,7 @@ if __name__ == "__main__":
         "--output-mode",
         choices=[mode.value for mode in OutputMode],
         type=OutputMode,
+        default=OutputMode.SYMLINK,
         help="How accepted dedup files should be exposed. If omitted, connector only handles queue ingestion.",
     )
 
