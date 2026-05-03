@@ -8,8 +8,6 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host  # necessary for IPv6
-    depends_on:
-      - connector
     volumes:
       # Data directory
       - source: ./data/tgmount
@@ -103,6 +101,8 @@ services:
   connector:
     image: ghcr.io/fumr/flaczkownia-dedup
     restart: unless-stopped
+    depends_on:
+      - ziprofs
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
