@@ -92,13 +92,16 @@ def _copy_file(db_path: str, db_prefix: str, view_dir: str, source_path: str):
         src_file = Path(source_path) / rel_path
         dst_file = Path(view_dir) / rel_path
 
-        if dst_file.exists() and not dst_file.is_symlink():
-            src_stat = os.stat(src_file)
-            dst_stat = os.stat(dst_file)
-            if src_stat.st_size == dst_stat.st_size and src_stat.st_mtime == dst_stat.st_mtime:
-                logger.debug(f"Copy up to date: {dst_file} (size/mtime equals)")
-                return
-            logger.debug(f"Updating copy: {dst_file} (size/mtime differs)")
+        if dst_file.exists():
+            if not dst_file.is_symlink():
+                src_stat = os.stat(src_file)
+                dst_stat = os.stat(dst_file)
+                if src_stat.st_size == dst_stat.st_size and src_stat.st_mtime == dst_stat.st_mtime:
+                    logger.debug(f"Copy up to date: {dst_file} (size/mtime equals)")
+                    return
+                logger.debug(f"Updating copy: {dst_file} (size/mtime differs)")
+            else:
+                logger.debug(f"Updating copy: {dst_file} (is a symlink)")
             dst_file.unlink()
 
         dst_file.parent.mkdir(parents=True, exist_ok=True)
