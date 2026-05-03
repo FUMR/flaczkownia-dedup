@@ -245,7 +245,8 @@ async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Se
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        level=os.environ.get("LOG_LEVEL", "INFO").upper())
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description="Flaczkownia dedup connector")
