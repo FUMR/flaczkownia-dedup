@@ -167,6 +167,8 @@ def _cleanup_stale_files(view_dir: str, db_prefix: str):
     except Exception:
         logger.exception("Error during stale file cleanup")
 
+    logger.info("Starting stale files finished")
+
 
 def _ensure_valid_view(view_dir: str, db_prefix: str):
     logger.info("Starting view reconciliation...")
@@ -182,6 +184,8 @@ def _ensure_valid_view(view_dir: str, db_prefix: str):
 
     except Exception:
         logger.exception("Error during view reconciliation")
+
+    logger.info("View reconciliation finished")
 
 
 @asynccontextmanager
