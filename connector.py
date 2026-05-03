@@ -7,6 +7,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from enum import Enum
+from functools import partial
 from pathlib import Path
 from typing import Annotated
 
@@ -19,6 +20,7 @@ import uvicorn
 from lib.sqlmodels import SQLBase, Queue, Track, UnknownFile
 
 executor: ThreadPoolExecutor | None = None
+_file_op = None
 
 
 class TGMountWebhook(BaseModel):
@@ -164,39 +166,25 @@ def _cleanup_stale_files(view_dir: str, db_prefix: str):
         logger.exception("Error during stale file cleanup")
 
 
-def _ensure_valid_symlinks(view_dir: str, db_prefix: str, source_relative_path: str):
-    logger.info("Starting symlink creation and validation...")
+def _ensure_valid_view(view_dir: str, db_prefix: str):
+    logger.info("Starting view reconciliation...")
     try:
         with sessionmaker(bind=engine)() as session:
             # Process Tracks
             for (path,) in session.query(Track.path).filter_by(duplicate=False).yield_per(1000):
-                _create_symlink(path, db_prefix, view_dir, source_relative_path)
+                _file_op(path)
 
             # Process UnknownFiles
             for (path,) in session.query(UnknownFile.path).yield_per(1000):
-                _create_symlink(path, db_prefix, view_dir, source_relative_path)
+                _file_op(path)
 
     except Exception:
-        logger.exception("Error during symlink creation and validation")
-
-
-def _ensure_valid_copies(view_dir: str, db_prefix: str, source_path: str):
-    logger.info("Starting copy reconciliation...")
-    try:
-        with sessionmaker(bind=engine)() as session:
-            for (path,) in session.query(Track.path).filter_by(duplicate=False).yield_per(1000):
-                _copy_file(path, db_prefix, view_dir, source_path)
-
-            for (path,) in session.query(UnknownFile.path).yield_per(1000):
-                _copy_file(path, db_prefix, view_dir, source_path)
-
-    except Exception:
-        logger.exception("Error during copy reconciliation")
+        logger.exception("Error during view reconciliation")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global executor
+    global executor, _file_op
 
     # Startup logic
     logger.info("Initializing database")
@@ -206,11 +194,13 @@ async def lifespan(app: FastAPI):
     executor = ThreadPoolExecutor(max_workers=1)
 
     if args.view_mode == "symlink":
-        executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix)
-        executor.submit(_ensure_valid_symlinks, args.view_dir, args.db_prefix, args.source_relative_path)
+        _file_op = partial(_create_symlink, db_prefix=args.db_prefix, view_dir=args.view_dir, source_relative_path=args.source_relative_path)
     elif args.view_mode == "copy":
+        _file_op = partial(_copy_file, db_prefix=args.db_prefix, view_dir=args.view_dir, source_path=args.source_path)
+
+    if _file_op:
         executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix)
-        executor.submit(_ensure_valid_copies, args.view_dir, args.db_prefix, args.source_path)
+        executor.submit(_ensure_valid_view, args.view_dir, args.db_prefix)
 
     yield
 
@@ -229,11 +219,8 @@ app = FastAPI(
 @app.post(path="/dedup_processed_file_webhook")
 async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
     logger.debug(f"Got dedup processed file webhook: {data}")
-    if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN):
-        if args.view_mode == "symlink":
-            executor.submit(_create_symlink, data.path, args.db_prefix, args.view_dir, args.source_relative_path)
-        elif args.view_mode == "copy":
-            executor.submit(_copy_file, data.path, args.db_prefix, args.view_dir, args.source_path)
+    if data.type in (DedupFileStatus.NEW, DedupFileStatus.UNKNOWN) and _file_op:
+        executor.submit(_file_op, data.path)
 
     return {"status": "ok"}
 
