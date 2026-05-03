@@ -60,4 +60,6 @@ USER        nobody
 ENV         PYTHONUNBUFFERED=1
 ENV         NUMBA_CACHE_DIR=/tmp/numba
 
+STOPSIGNAL  SIGINT
+
 ENTRYPOINT  [ "python", "dedup.py" ]
