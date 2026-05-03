@@ -7,9 +7,7 @@ services:
     image: ghcr.io/juniorjpdj/tgmount
     restart: unless-stopped
     privileged: true
-    network_mode: host
-    depends_on:
-      - connector
+    network_mode: host  # necessary for IPv6
     volumes:
       # Data directory
       - source: ./data/tgmount
@@ -103,6 +101,8 @@ services:
   connector:
     image: ghcr.io/fumr/flaczkownia-dedup
     restart: unless-stopped
+    depends_on:
+      - ziprofs
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
@@ -112,6 +112,14 @@ services:
         source: ./data/deduped
         target: /app/data/deduped
         type: bind
+      # - # Dedup input directory (ziprofs output) - required only for copied view mode
+      #   source: ./data/ziprofs/mnt
+      #   target: /app/data/music
+      #   read_only: true
+      #   type: bind
+      #   bind:
+      #     # Allows host mounts to propagate to the container after container start
+      #     propagation: rslave
     stop_signal: SIGINT
     entrypoint:
       - python
@@ -128,9 +136,21 @@ services:
       - 0.0.0.0
       - --port
       - "9999"
+      # Symlink view mode:
+      - --view-mode
+      - symlink
       - --view-dir
       - /app/data/deduped
       - --source-relative-path
       - ../ziprofs/mnt
       - --db-prefix
       - data/music
+      # Copied view mode:
+      # - --view-mode
+      # - copy
+      # - --view-dir
+      # - /app/data/deduped
+      # - --source-path
+      # - /app/data/music
+      # - --db-prefix
+      # - data/music

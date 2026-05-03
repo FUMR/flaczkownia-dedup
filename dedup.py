@@ -17,7 +17,8 @@ from sqlalchemy.orm import sessionmaker
 
 from lib.sqlmodels import SQLBase, Track, Queue, JobStatus, UnknownFile
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level='INFO')
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=os.environ.get("LOG_LEVEL", "INFO").upper())
 logger = logging.getLogger(__name__)
 
 
