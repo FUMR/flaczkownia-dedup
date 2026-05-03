@@ -236,7 +236,7 @@ async def dedup_processed_file_webhook(data: DedupProcessedFileWebhook):
 
 @app.post(path="/tgmount_add_to_dedup_queue")
 async def tgmount_add_to_dedup_queue(data: TGMountWebhook, session: Annotated[Session, Depends(get_session)]):
-    q = Queue(path=str(Path(args.basedir) / Path(data.fname)))
+    q = Queue(path=str(Path(args.base_dir) / Path(data.fname)))
     session.add(q)
     session.commit()
     logger.info(f"Added file to queue: {q.path}")
@@ -252,7 +252,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Flaczkownia dedup connector")
     parser.add_argument("--db", "--database", default="sqlite:///data/dedup.sqlite3",
                         help="Database URL (eg. sqlite or pgsql path)")
-    parser.add_argument("--basedir", default="./",
+    parser.add_argument("--base-dir", default="./",
                         help="Path prepended to jobs added to queue from webhook")
     parser.add_argument("--host", default="0.0.0.0", help="Address to listen on")
     parser.add_argument("--port", default=8000, type=int, help="Port to listen on")
