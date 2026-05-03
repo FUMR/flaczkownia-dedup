@@ -102,7 +102,9 @@ def _copy_file(db_path: str, db_prefix: str, view_dir: str, source_path: str):
             dst_file.unlink()
 
         dst_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src_file, dst_file)
+        tmp_file = dst_file.with_suffix(dst_file.suffix + ".tmp")
+        shutil.copy2(src_file, tmp_file)
+        tmp_file.replace(dst_file)
         logger.debug(f"Copied: {src_file} -> {dst_file}")
 
     except Exception as e:
