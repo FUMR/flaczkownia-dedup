@@ -7,7 +7,7 @@ services:
     image: ghcr.io/juniorjpdj/tgmount
     restart: unless-stopped
     privileged: true
-    network_mode: host
+    network_mode: host  # necessary for IPv6
     depends_on:
       - connector
     volumes:
