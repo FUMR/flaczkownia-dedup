@@ -128,7 +128,7 @@ services:
       # Necessary for tgmount to reach webhook (tgmount is running in host network mode)
       - "127.0.0.1:9999:9999"
     command:
-      - --basedir
+      - --base-dir
       - data/music/flaczkownia
       - --db
       - sqlite:////app/data/dedup.sqlite3
