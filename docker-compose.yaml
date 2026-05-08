@@ -78,6 +78,8 @@ services:
     depends_on:
       - connector
       - ziprofs
+    # environment:
+    #      LOG_LEVEL: DEBUG
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
@@ -103,6 +105,8 @@ services:
     restart: unless-stopped
     depends_on:
       - ziprofs
+    # environment:
+    #      LOG_LEVEL: DEBUG
     volumes:
       - # SQLite3 database directory
         source: ./data/dedup/
