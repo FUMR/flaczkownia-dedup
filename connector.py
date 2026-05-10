@@ -46,14 +46,41 @@ def get_session():
         yield session
 
 
-def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative_path: str):
+def _dir_per_file_path(rel_path: Path, configured_prefixes: frozenset[str]) -> Path:
+    for prefix in configured_prefixes:
+        prefix_path = Path(prefix)
+        try:
+            remainder = rel_path.relative_to(prefix_path)
+        except ValueError:
+            continue
+        if len(remainder.parts) == 1:
+            filename = remainder.parts[0]
+            return prefix_path / filename / filename
+    return rel_path
+
+
+def _reverse_dir_per_file_path(view_rel_path: Path, configured_prefixes: frozenset[str]) -> Path:
+    for prefix in configured_prefixes:
+        prefix_path = Path(prefix)
+        try:
+            remainder = view_rel_path.relative_to(prefix_path)
+        except ValueError:
+            continue
+        remainder_parts = remainder.parts
+        if len(remainder_parts) == 2 and remainder_parts[0] == remainder_parts[1]:
+            return prefix_path / remainder_parts[0]
+    return view_rel_path
+
+
+def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative_path: str, dir_per_file_prefixes: frozenset[str] = frozenset()):
     try:
         if not db_path.startswith(db_prefix):
             logger.warning(f"Path {db_path} does not start with {db_prefix}, skipping")
             return
 
-        rel_path = Path(db_path).relative_to(db_prefix)
-        link_path = Path(view_dir) / rel_path
+        orig_rel_path = Path(db_path).relative_to(db_prefix)
+        view_rel_path = _dir_per_file_path(orig_rel_path, dir_per_file_prefixes)
+        link_path = Path(view_dir) / view_rel_path
 
         # Calculate the target
         # link is at view_dir/rel_path
@@ -61,7 +88,7 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
         # We need to go up from link_path.parent to view_dir
         depth = len(rel_path.parent.parts)
         up_prefix = "../" * depth
-        target = f"{up_prefix}{source_relative_path}/{rel_path}"
+        target = f"{up_prefix}{source_relative_path}/{orig_rel_path}"
 
         if link_path.is_symlink():
             current_target = os.readlink(link_path)
@@ -82,15 +109,16 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
         logger.error(f"Failed to create symlink for {db_path}: {e}")
 
 
-def _copy_file(db_path: str, db_prefix: str, view_dir: str, source_path: str):
+def _copy_file(db_path: str, db_prefix: str, view_dir: str, source_path: str, dir_per_file_prefixes: frozenset[str] = frozenset()):
     try:
         if not db_path.startswith(db_prefix):
             logger.warning(f"Path {db_path} does not start with {db_prefix}, skipping")
             return
 
-        rel_path = Path(db_path).relative_to(db_prefix)
-        src_file = Path(source_path) / rel_path
-        dst_file = Path(view_dir) / rel_path
+        orig_rel_path = Path(db_path).relative_to(db_prefix)
+        view_rel_path = _dir_per_file_path(orig_rel_path, dir_per_file_prefixes)
+        src_file = Path(source_path) / orig_rel_path
+        dst_file = Path(view_dir) / view_rel_path
 
         if dst_file.exists():
             if not dst_file.is_symlink():
@@ -132,7 +160,7 @@ def _process_cleanup_batch(session, batch_files):
                 logger.error(f"Failed to remove {full_path}: {e}")
 
 
-def _cleanup_stale_files(view_dir: str, db_prefix: str):
+def _cleanup_stale_files(view_dir: str, db_prefix: str, dir_per_file_prefixes: frozenset[str] = frozenset()):
     logger.info("Starting stale files cleanup...")
     batch_size = 1000
     batch_files = []  # list of (full_path, db_path)
@@ -144,9 +172,10 @@ def _cleanup_stale_files(view_dir: str, db_prefix: str):
                 for name in files:
                     full_path = os.path.join(root, name)
                     try:
-                        rel_path = Path(full_path).relative_to(view_dir)
+                        view_rel_path = Path(full_path).relative_to(view_dir)
+                        orig_rel_path = _reverse_dir_per_file_path(view_rel_path, dir_per_file_prefixes)
                         # Reconstruct db_path
-                        db_path = str(Path(db_prefix) / rel_path)
+                        db_path = str(Path(db_prefix) / orig_rel_path)
                         batch_files.append((full_path, db_path))
                     except ValueError:
                         continue
@@ -202,13 +231,15 @@ async def lifespan(app: FastAPI):
 
     executor = ThreadPoolExecutor(max_workers=1)
 
+    dir_per_file_prefixes = frozenset(args.dir_per_file_path)
+
     if args.view_mode == "symlink":
-        _file_op = partial(_create_symlink, db_prefix=args.db_prefix, view_dir=args.view_dir, source_relative_path=args.source_relative_path)
+        _file_op = partial(_create_symlink, db_prefix=args.db_prefix, view_dir=args.view_dir, source_relative_path=args.source_relative_path, dir_per_file_prefixes=dir_per_file_prefixes)
     elif args.view_mode == "copy":
-        _file_op = partial(_copy_file, db_prefix=args.db_prefix, view_dir=args.view_dir, source_path=args.source_path)
+        _file_op = partial(_copy_file, db_prefix=args.db_prefix, view_dir=args.view_dir, source_path=args.source_path, dir_per_file_prefixes=dir_per_file_prefixes)
 
     if _file_op:
-        executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix)
+        executor.submit(_cleanup_stale_files, args.view_dir, args.db_prefix, dir_per_file_prefixes)
         executor.submit(_ensure_valid_view, args.view_dir, args.db_prefix)
 
     yield
@@ -264,6 +295,8 @@ if __name__ == "__main__":
     parser.add_argument("--source-relative-path",
                         help="Relative path from view-dir to source root (symlink target)")
     parser.add_argument("--source-path", help="Path where original files are stored (copy source)",)
+    parser.add_argument("--dir-per-file-path", action="append", default=[],
+                        help="Wrap loose files in these path prefixes into per-file subdirectories (repeatable)")
 
     args = parser.parse_args()
 

@@ -158,3 +158,5 @@ services:
       # - /app/data/music
       # - --db-prefix
       # - data/music
+      - --dir-per-file-path
+      - flaczkownia
