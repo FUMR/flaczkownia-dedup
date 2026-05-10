@@ -83,10 +83,10 @@ def _create_symlink(db_path: str, db_prefix: str, view_dir: str, source_relative
         link_path = Path(view_dir) / view_rel_path
 
         # Calculate the target
-        # link is at view_dir/rel_path
-        # target is at view_dir/source_relative_path/rel_path
+        # link is at view_dir/view_rel_path
+        # target is at view_dir/source_relative_path/orig_rel_path
         # We need to go up from link_path.parent to view_dir
-        depth = len(rel_path.parent.parts)
+        depth = len(view_rel_path.parent.parts)
         up_prefix = "../" * depth
         target = f"{up_prefix}{source_relative_path}/{orig_rel_path}"
 
