@@ -1,24 +1,24 @@
 FROM        python:3.14.6-alpine@sha256:003970a263347645cd23d4f90929ad16ba7ce7d808ee4674ffcc93cb21cc289f
 
-# renovate: datasource=repology depName=alpine_3_23/gcc versioning=loose
-ARG         GCC_VERSION="15.2.0-r2"
-# renovate: datasource=repology depName=alpine_3_23/libsndfile versioning=loose
+# renovate: datasource=repology depName=alpine_3_24/gcc versioning=loose
+ARG         GCC_VERSION="15.2.0-r5"
+# renovate: datasource=repology depName=alpine_3_24/libsndfile versioning=loose
 ARG         LIBSNDFILE_VERSION="1.2.2-r2"
-# renovate: datasource=repology depName=alpine_3_23/llvm20 versioning=loose
-ARG         LLVM_VERSION="20.1.8-r0"
-# renovate: datasource=repology depName=alpine_3_23/gstreamer versioning=loose
-ARG         GSTREAMER_VERSION="1.26.9-r0"
-# renovate: datasource=repology depName=alpine_3_23/git versioning=loose
-ARG         GIT_VERSION="2.52.0-r0"
-# renovate: datasource=repology depName=alpine_3_23/build-base versioning=loose
-ARG         BUILD_BASE_VERSION="0.5-r3"
-# renovate: datasource=repology depName=alpine_3_23/cairo-dev versioning=loose
-ARG         CAIRO_VERSION="1.18.4-r0"
-# renovate: datasource=repology depName=alpine_3_23/cmake versioning=loose
-ARG         CMAKE_VERSION="4.1.3-r0"
-# renovate: datasource=repology depName=alpine_3_23/libffi-dev versioning=loose
-ARG         LIBFFI_VERSION="3.5.2-r0"
-# renovate: datasource=repology depName=alpine_3_23/libretls-dev versioning=loose
+# renovate: datasource=repology depName=alpine_3_24/llvm20 versioning=loose
+ARG         LLVM_VERSION="20.1.8-r1"
+# renovate: datasource=repology depName=alpine_3_24/gstreamer versioning=loose
+ARG         GSTREAMER_VERSION="1.28.3-r0"
+# renovate: datasource=repology depName=alpine_3_24/git versioning=loose
+ARG         GIT_VERSION="2.54.0-r0"
+# renovate: datasource=repology depName=alpine_3_24/build-base versioning=loose
+ARG         BUILD_BASE_VERSION="0.5-r4"
+# renovate: datasource=repology depName=alpine_3_24/cairo-dev versioning=loose
+ARG         CAIRO_VERSION="1.18.4-r1"
+# renovate: datasource=repology depName=alpine_3_24/cmake versioning=loose
+ARG         CMAKE_VERSION="4.2.3-r0"
+# renovate: datasource=repology depName=alpine_3_24/libffi-dev versioning=loose
+ARG         LIBFFI_VERSION="3.5.2-r1"
+# renovate: datasource=repology depName=alpine_3_24/libretls-dev versioning=loose
 ARG         LIBRETLS_VERSION="3.8.1-r0"
 
 ARG         TARGETPLATFORM
