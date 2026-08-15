@@ -4,8 +4,8 @@ FROM        python:3.14.7-alpine@sha256:05b2b8b732ecd268fee8727a369f936f022d1321
 ARG         GCC_VERSION="15.2.0-r5"
 # renovate: datasource=repology depName=alpine_3_24/libsndfile versioning=loose
 ARG         LIBSNDFILE_VERSION="1.2.2-r2"
-# renovate: datasource=repology depName=alpine_3_24/llvm20 versioning=loose
-ARG         LLVM_VERSION="20.1.8-r1"
+# renovate: datasource=repology depName=alpine_3_24/llvm22 versioning=loose
+ARG         LLVM_VERSION="22.1.3-r0"
 # renovate: datasource=repology depName=alpine_3_24/gstreamer versioning=loose
 ARG         GSTREAMER_VERSION="1.28.3-r0"
 # renovate: datasource=repology depName=alpine_3_24/git versioning=loose
@@ -22,6 +22,7 @@ ARG         LIBFFI_VERSION="3.5.2-r1"
 ARG         LIBRETLS_VERSION="3.8.1-r0"
 
 ARG         TARGETPLATFORM
+ARG         CXX="g++"
 
 WORKDIR     /app
 
@@ -31,9 +32,9 @@ RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-
             apk add --no-cache \
               libgcc=${GCC_VERSION} \
               libsndfile=${LIBSNDFILE_VERSION} \
-              llvm20=${LLVM_VERSION} \
-              llvm20-static=${LLVM_VERSION} \
-              llvm20-gtest=${LLVM_VERSION} \
+              llvm22=${LLVM_VERSION} \
+              llvm22-static=${LLVM_VERSION} \
+              llvm22-gtest=${LLVM_VERSION} \
               gstreamer=${GSTREAMER_VERSION} \
               gst-plugins-base=${GSTREAMER_VERSION} \
               gst-plugins-good=${GSTREAMER_VERSION} \
@@ -44,7 +45,7 @@ RUN         --mount=type=cache,sharing=locked,target=/root/.cache,id=home-cache-
               build-base=${BUILD_BASE_VERSION} \
               cairo-dev=${CAIRO_VERSION} \
               cmake=${CMAKE_VERSION} \
-              llvm20-dev=${LLVM_VERSION} \
+              llvm22-dev=${LLVM_VERSION} \
               libffi-dev=${LIBFFI_VERSION} \
               libretls-dev=${LIBRETLS_VERSION} \
             && \
