@@ -3,7 +3,7 @@ sqlalchemy==2.1.4
 psycopg2-binary==2.9.13
 fastapi==0.142.2
 httpx==0.28.1
-pydantic==2.13.5
+pydantic==2.14.0
 uvicorn==0.54.0
 pygobject==3.58.0
 audioprint@git+https://github.com/JuniorJPDJ/audioprint@pyproject
