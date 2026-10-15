@@ -5,7 +5,7 @@ ARG         GCC_VERSION="15.2.0-r5"
 # renovate: datasource=repology depName=alpine_3_24/libsndfile versioning=loose
 ARG         LIBSNDFILE_VERSION="1.2.2-r2"
 # renovate: datasource=repology depName=alpine_3_24/llvm22 versioning=loose
-ARG         LLVM_VERSION="22.1.3-r0"
+ARG         LLVM_VERSION="22.1.3-r1"
 # renovate: datasource=repology depName=alpine_3_24/gstreamer versioning=loose
 ARG         GSTREAMER_VERSION="1.28.3-r0"
 # renovate: datasource=repology depName=alpine_3_24/git versioning=loose
