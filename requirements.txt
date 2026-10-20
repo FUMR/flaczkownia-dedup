@@ -1,7 +1,7 @@
 mediafile==0.17.0
 sqlalchemy==2.1.5
 psycopg[binary]==3.3.6
-fastapi==0.151.0
+fastapi==0.152.0
 httpx==0.28.1
 pydantic==2.14.1
 uvicorn==0.54.0
