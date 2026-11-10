@@ -9,7 +9,7 @@ ARG         LLVM_VERSION="22.1.3-r1"
 # renovate: datasource=repology depName=alpine_3_24/gstreamer versioning=loose
 ARG         GSTREAMER_VERSION="1.28.3-r0"
 # renovate: datasource=repology depName=alpine_3_24/git versioning=loose
-ARG         GIT_VERSION="2.54.0-r0"
+ARG         GIT_VERSION="2.54.1-r0"
 # renovate: datasource=repology depName=alpine_3_24/build-base versioning=loose
 ARG         BUILD_BASE_VERSION="0.5-r4"
 # renovate: datasource=repology depName=alpine_3_24/cairo-dev versioning=loose
