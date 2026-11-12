@@ -1,6 +1,6 @@
 mediafile==0.17.0
 sqlalchemy==2.1.8
-psycopg[binary]==3.3.8
+psycopg[binary]==3.3.9
 fastapi==0.162.5
 httpx==0.28.1
 pydantic==2.14.3
